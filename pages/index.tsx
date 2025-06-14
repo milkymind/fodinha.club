@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import styles from '../styles/Home.module.css';
 import Game from '../src/components/Game';
 import { useLanguage } from '../contexts/LanguageContext';
-import LanguageToggle from '../src/components/LanguageToggle';
-import BugReportButton from '../src/components/BugReportButton';
+import { useGuest } from '../contexts/GuestContext';
+import AuthWrapper from '../components/AuthWrapper';
+import UsernameSetup from '../components/UsernameSetup';
+import { useUser } from '@clerk/nextjs';
 
 interface LobbyInfo {
   players: { id: number; name: string }[];
@@ -13,6 +15,8 @@ interface LobbyInfo {
 
 export default function Home() {
   const { t } = useLanguage();
+  const { user, isLoaded } = useUser();
+  const { isGuest, guestName } = useGuest();
   const [gameId, setGameId] = useState<string>('');
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
@@ -22,6 +26,29 @@ export default function Home() {
   const [lobbyInfo, setLobbyInfo] = useState<LobbyInfo | null>(null);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [showUsernameSetup, setShowUsernameSetup] = useState<boolean>(false);
+
+  // Set default player name from user when loaded or from guest name
+  useEffect(() => {
+    if (isGuest && !playerName) {
+      setPlayerName(guestName);
+    } else if (isLoaded && user && !isGuest) {
+      const defaultName = user.firstName || user.username || 'Player';
+      setPlayerName(defaultName);
+    }
+  }, [isLoaded, user, playerName, isGuest, guestName]);
+
+  // Update player name when transitioning from guest to authenticated
+  useEffect(() => {
+    if (isLoaded && user && !isGuest && playerName === guestName) {
+      const defaultName = user.firstName || user.username || 'Player';
+      setPlayerName(defaultName);
+    }
+  }, [isLoaded, user, isGuest, playerName, guestName]);
+
+  const handleUsernameSet = (username: string) => {
+    setShowUsernameSetup(false);
+  };
 
   const createGame = async () => {
     try {
@@ -132,14 +159,21 @@ export default function Home() {
     }
   };
 
+  // If auth is still loading and not in guest mode, show loading state
+  if (!isLoaded && !isGuest) {
+    return <div>Loading...</div>;
+  }
+
   // Show Game component if started
   if ((gameId && playerId) && gameStarted) {
     return (
-      <Game
-        gameId={gameId}
-        playerId={playerId}
-        onLeaveGame={handleLeaveGame}
-      />
+      <AuthWrapper gameId={gameId} playerId={playerId}>
+        <Game
+          gameId={gameId}
+          playerId={playerId}
+          onLeaveGame={handleLeaveGame}
+        />
+      </AuthWrapper>
     );
   }
 
@@ -147,39 +181,41 @@ export default function Home() {
   if ((gameId && playerId) && lobbyInfo) {
     const isHost = lobbyInfo.players[0]?.id === playerId;
     return (
-      <div className={styles.container}>
-        <LanguageToggle />
-        <BugReportButton gameId={gameId} playerId={playerId} />
-        <h2>{t('lobby', { id: gameId })}</h2>
-        <div className={styles.section}>
-          <h3>{t('players_count', { current: lobbyInfo.players.length, max: lobbyInfo.maxPlayers })}</h3>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {lobbyInfo.players.map((p) => (
-              <li key={p.id} style={{ fontWeight: p.id === playerId ? 'bold' : 'normal' }}>
-                {p.name} {p.id === playerId ? t('you') : ''}
-              </li>
-            ))}
-          </ul>
-          <p>{t('lives_per_player', { lives: lobbyInfo.lives })}</p>
-          <p>{t('share_lobby_code', { code: gameId })}</p>
-          {isHost && (
-            <button className={styles.button} onClick={handleStartGame} disabled={lobbyInfo.players.length < 2}>
-              {t('start_game')}
-            </button>
-          )}
-          <button className={styles.button} onClick={handleLeaveGame}>{t('leave_lobby')}</button>
-          {isHost && lobbyInfo.players.length < 2 && (
-            <p style={{ color: 'red', marginTop: 8 }}>{t('min_players_required')}</p>
-          )}
+      <AuthWrapper gameId={gameId} playerId={playerId}>
+        <div className={styles.container}>
+          <h2>{t('lobby', { id: gameId })}</h2>
+          <div className={styles.section}>
+            <h3>{t('players_count', { current: lobbyInfo.players.length, max: lobbyInfo.maxPlayers })}</h3>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {lobbyInfo.players.map((p) => (
+                <li key={p.id} style={{ fontWeight: p.id === playerId ? 'bold' : 'normal' }}>
+                  {p.name} {p.id === playerId ? t('you') : ''}
+                </li>
+              ))}
+            </ul>
+            <p>{t('lives_per_player', { lives: lobbyInfo.lives })}</p>
+            <p>{t('share_lobby_code', { code: gameId })}</p>
+            {isHost && (
+              <button className={styles.button} onClick={handleStartGame} disabled={lobbyInfo.players.length < 2}>
+                {t('start_game')}
+              </button>
+            )}
+            <button className={styles.button} onClick={handleLeaveGame}>{t('leave_lobby')}</button>
+            {isHost && lobbyInfo.players.length < 2 && (
+              <p style={{ color: 'red', marginTop: 8 }}>{t('min_players_required')}</p>
+            )}
+          </div>
         </div>
-      </div>
+      </AuthWrapper>
     );
   }
 
-  return (
-    <div className={styles.container}>
-      <LanguageToggle />
-      <BugReportButton />
+    return (
+    <AuthWrapper>
+      {showUsernameSetup && (
+        <UsernameSetup onUsernameSet={handleUsernameSet} />
+      )}
+      <div className={styles.container}>
       <h1 className={styles.title}>{t('title')}</h1>
       {error && (
         <div className={styles.error}>
@@ -344,5 +380,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </AuthWrapper>
   );
 } 

@@ -1,3 +1,60 @@
 {
-  "lobbies": {}
+  "lobbies": {
+    "EB96": {
+      "gameId": "EB96",
+      "players": [
+        {
+          "id": 1,
+          "name": "Vinicius"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-14T20:05:07.450Z"
+    },
+    "50TX": {
+      "gameId": "50TX",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-14T22:14:22.582Z"
+    },
+    "7HNW": {
+      "gameId": "7HNW",
+      "players": [
+        {
+          "id": 1,
+          "name": "Guest"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-14T22:17:24.431Z"
+    },
+    "0Q4Q": {
+      "gameId": "0Q4Q",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-14T22:19:14.942Z"
+    }
+  }
 }

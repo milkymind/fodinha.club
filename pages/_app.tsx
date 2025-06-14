@@ -5,6 +5,8 @@ import '../src/App.css'
 import io, { Socket } from 'socket.io-client';
 import { SocketContext } from '../contexts/SocketContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
+import { GuestProvider } from '../contexts/GuestContext';
+import { ClerkProvider } from '@clerk/nextjs';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -102,11 +104,71 @@ export default function App({ Component, pageProps }: AppProps) {
     };
   }, [socket]);
 
+  const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  // Show error message if Clerk keys are not configured
+  if (!clerkPublishableKey) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '2rem',
+        textAlign: 'center',
+        backgroundColor: '#0a0a0a',
+        color: 'white'
+      }}>
+        <h1 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>⚠️ Configuration Error</h1>
+        <p style={{ color: '#ccc', marginBottom: '1rem' }}>
+          Clerk authentication is not configured properly.
+        </p>
+        <div style={{ 
+          backgroundColor: '#1a1a1a', 
+          padding: '1rem', 
+          borderRadius: '8px',
+          textAlign: 'left',
+          fontSize: '0.9rem',
+          marginBottom: '1rem'
+        }}>
+          <p style={{ color: '#ffd93d', marginBottom: '0.5rem' }}>To fix this:</p>
+          <ol style={{ color: '#ccc', paddingLeft: '1.5rem' }}>
+            <li>Create a <code style={{ color: '#4ecdc4' }}>.env.local</code> file in your project root</li>
+            <li>Add your Clerk API keys:</li>
+          </ol>
+          <pre style={{ 
+            backgroundColor: '#2a2a2a', 
+            color: '#4ecdc4', 
+            padding: '0.5rem',
+            borderRadius: '4px',
+            marginTop: '0.5rem',
+            fontSize: '0.8rem'
+          }}>
+{`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...`}
+          </pre>
+        </div>
+        <p style={{ color: '#ccc', fontSize: '0.9rem' }}>
+          Get your keys from <a href="https://dashboard.clerk.com" style={{ color: '#4f46e5' }}>Clerk Dashboard</a>
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <LanguageProvider>
-    <SocketContext.Provider value={socket}>
-      <Component {...pageProps} />
-    </SocketContext.Provider>
-    </LanguageProvider>
+    <ClerkProvider 
+      publishableKey={clerkPublishableKey}
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
+    >
+      <GuestProvider>
+        <LanguageProvider>
+          <SocketContext.Provider value={socket}>
+            <Component {...pageProps} />
+          </SocketContext.Provider>
+        </LanguageProvider>
+      </GuestProvider>
+    </ClerkProvider>
   );
 } 
