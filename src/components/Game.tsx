@@ -4,6 +4,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import styles from '../styles/Game.module.css';
 import LanguageToggle from './LanguageToggle';
 import BugReportButton from './BugReportButton';
+import Logo from '../../components/Logo';
+import ThemeToggle from '../../components/ThemeToggle';
 
 interface GameProps {
   gameId: string;
@@ -77,6 +79,10 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, any>>(new Map());
   const [syncInProgress, setSyncInProgress] = useState<boolean>(false);
   const [betError, setBetError] = useState<string>('');
+  
+  // Card sorting state
+  const [isCardsSorted, setIsCardsSorted] = useState<boolean>(false);
+  const [originalCardOrder, setOriginalCardOrder] = useState<string[]>([]);
   
   // Use a ref to track if we're already attempting to reconnect
   const isReconnecting = useRef<boolean>(false);
@@ -1193,148 +1199,120 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
 
   // Function to determine if a card is the winning card in this round
   const isWinningCard = (playerIdOfCard: number, card: string): boolean => {
-    if (!gameState || !gameState.mesa || gameState.mesa.length === 0) return false;
+    if (!gameState?.mesa || gameState.mesa.length === 0) return false;
     
-    // Skip highlighting in tied rounds except for the final round of a hand
-    if (gameState.tie_in_previous_round && 
-        gameState.current_round !== gameState.cartas) {
+    // Get all cards on the table
+    const tableCards = gameState.mesa;
+    
+    // Find the card we're checking
+    const cardOnTable = tableCards.find(([pid, tableCard]) => 
+      pid === playerIdOfCard && tableCard === card
+    );
+    
+    if (!cardOnTable) return false;
+    
+    // Check if this is a cancelled card first
+    if (isCancelledCard(playerIdOfCard, card)) {
       return false;
     }
     
-    // Use the explicit flag if available (for completed rounds)
-    if (gameState.winning_card_played_by !== undefined) {
-      return playerIdOfCard === gameState.winning_card_played_by;
+    // If there's a manilha on the table, find the highest manilha
+    const manilhaCards = tableCards.filter(([, tableCard]) => {
+      const cardValue = tableCard.substring(0, tableCard.length - 1);
+      return cardValue === gameState.manilha;
+    });
+    
+    if (manilhaCards.length > 0) {
+      // If this card is not a manilha, it can't win
+      const thisCardValue = card.substring(0, card.length - 1);
+      if (thisCardValue !== gameState.manilha) {
+        return false;
+      }
+      
+      // Among manilhas, find the strongest
+      const getCardStrength = (cardStr: string): number => {
+        const suit = cardStr.charAt(cardStr.length - 1);
+        const ORDEM_NAIPE = {'♠': 3, '♥': 2, '♦': 1, '♣': 0};
+        return ORDEM_NAIPE[suit as keyof typeof ORDEM_NAIPE] || 0;
+      };
+      
+      const maxManilhaStrength = Math.max(...manilhaCards.map(([, tableCard]) => getCardStrength(tableCard)));
+      return getCardStrength(card) === maxManilhaStrength;
     }
     
-    // During gameplay, calculate the current winning card in real-time
-    if (gameState.estado === 'jogando' || gameState.estado === 'round_over') {
-      // First, check if this card is even on the table
-      const cardOnTable = gameState.mesa.find(([pid, tableCard]) => 
-        pid === playerIdOfCard && tableCard === card
-      );
-      if (!cardOnTable) return false;
-      
-      // Calculate card strengths and group by strength
-      const ORDEM_CARTAS = {
-        '4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9
-      };
-      const ORDEM_NAIPE_MANILHA = {'♦': 0, '♠': 1, '♥': 2, '♣': 3};
-      
+    // No manilhas on table, find highest regular card
+    const getCardStrength = (cardStr: string): number => {
+      const value = cardStr.substring(0, cardStr.length - 1);
+      const ORDEM_CARTAS = {'3': 10, '2': 9, 'A': 8, 'K': 7, 'J': 6, 'Q': 5, '7': 4, '6': 3, '5': 2, '4': 1};
+      return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
+    };
+    
+    const maxStrength = Math.max(...tableCards.map(([, tableCard]) => getCardStrength(tableCard)));
+    return getCardStrength(card) === maxStrength;
+  };
+
+  // Card sorting functions
+  const toggleCardSorting = () => {
+    if (!gameState?.maos?.[playerId]) return;
+    
+    if (!isCardsSorted) {
+      // Store original order before sorting
+      setOriginalCardOrder([...gameState.maos[playerId]]);
+      setIsCardsSorted(true);
+    } else {
+      // Return to original order
+      setIsCardsSorted(false);
+    }
+  };
+
+  const getSortedCards = (): string[] => {
+    if (!gameState?.maos?.[playerId]) return [];
+    
+    if (!isCardsSorted) {
+      return gameState.maos[playerId];
+    }
+    
+    // Sort cards by strength (lowest to highest, left to right)
+    return [...gameState.maos[playerId]].sort((a, b) => {
       const getCardStrength = (cardStr: string): number => {
         const value = cardStr.substring(0, cardStr.length - 1);
         const suit = cardStr.charAt(cardStr.length - 1);
         
-        if (gameState.manilha && value === gameState.manilha) {
-          return 100 + (ORDEM_NAIPE_MANILHA[suit as keyof typeof ORDEM_NAIPE_MANILHA] || 0);
+        // Check if it's a manilha
+        if (value === gameState?.manilha) {
+          const ORDEM_NAIPE_MANILHA = {'♣': 10, '♦': 11, '♥': 12, '♠': 13};
+          return ORDEM_NAIPE_MANILHA[suit as keyof typeof ORDEM_NAIPE_MANILHA] || 0;
         }
         
+        // Regular card strength
+        const ORDEM_CARTAS = {'4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9};
         return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
       };
       
-      // Group cards by strength
-      const cardsByStrength = new Map<number, [number, string][]>();
-      
-      for (const [pid, tableCard] of gameState.mesa) {
-        const strength = getCardStrength(tableCard);
-        
-        if (!cardsByStrength.has(strength)) {
-          cardsByStrength.set(strength, []);
-        }
-        cardsByStrength.get(strength)!.push([pid, tableCard]);
-      }
-      
-      // Cancel out cards with same strength (groups of 2+ cards cancel each other)
-      const remainingCards: [number, string][] = [];
-      
-      for (const [strength, cards] of Array.from(cardsByStrength.entries())) {
-        if (cards.length === 1) {
-          // Only one card with this strength, it remains
-          remainingCards.push(cards[0]);
-        } else if (cards.length === 2) {
-          // Two cards with same strength - they cancel each other out
-          // No cards added to remaining
-        } else {
-          // More than 2 cards with same strength - cancel in pairs, leaving remainder
-          const numPairs = Math.floor(cards.length / 2);
-          const numCancelled = numPairs * 2;
-          
-          // Add remaining cards that weren't cancelled (cards beyond the pairs)
-          for (let i = numCancelled; i < cards.length; i++) {
-            remainingCards.push(cards[i]);
-          }
-        }
-      }
-      
-      // If no cards remain (all cancelled), no winner yet
-      if (remainingCards.length === 0) {
-        return false;
-      }
-      
-      // Find the highest strength among remaining cards
-      let highestStrength = -1;
-      let winners: [number, string][] = [];
-      
-      for (const [pid, tableCard] of remainingCards) {
-        const strength = getCardStrength(tableCard);
-        
-        if (strength > highestStrength) {
-          highestStrength = strength;
-          winners = [[pid, tableCard]];
-        } else if (strength === highestStrength) {
-          winners.push([pid, tableCard]);
-        }
-      }
-      
-      // If there's only one winner, check if it's our card
-      if (winners.length === 1) {
-        const [winnerPid, winnerCard] = winners[0];
-        return winnerPid === playerIdOfCard && winnerCard === card;
-      }
-      
-      // If multiple winners with same strength, for final round we could use suit tiebreaker
-      // but for display purposes during gameplay, we'll just highlight all tied winners
-      if (winners.length > 1) {
-        // Check if this is the final round of the hand
-        const isLastRoundOfHand = gameState.current_round === gameState.cartas;
-        
-        if (isLastRoundOfHand) {
-          // In the final round, use suit tiebreaker to determine the single winner
-          const ORDEM_NAIPE_DESEMPATE = {'♣': 3, '♥': 2, '♠': 1, '♦': 0};
-          
-          let highestSuit = -1;
-          let suitWinner: [number, string] | null = null;
-          
-          for (const [pid, tableCard] of winners) {
-            const suit = tableCard.charAt(tableCard.length - 1);
-            const suitValue = ORDEM_NAIPE_DESEMPATE[suit as keyof typeof ORDEM_NAIPE_DESEMPATE] || 0;
-            
-            if (suitValue > highestSuit) {
-              highestSuit = suitValue;
-              suitWinner = [pid, tableCard];
-            }
-          }
-          
-          if (suitWinner) {
-            const [winnerPid, winnerCard] = suitWinner;
-            return winnerPid === playerIdOfCard && winnerCard === card;
-          }
-        }
-        
-        // For non-final rounds or if suit tiebreaker fails, highlight all tied winners
-        const isWinner = winners.some(([pid, tableCard]) => 
-          pid === playerIdOfCard && tableCard === card
-        );
-        return isWinner;
-      }
-    }
+      return getCardStrength(a) - getCardStrength(b); // Ascending order (weakest first)
+    });
+  };
+
+  const getOriginalCardIndex = (sortedIndex: number): number => {
+    if (!isCardsSorted || !gameState?.maos?.[playerId]) return sortedIndex;
     
-    return false;
+    const sortedCards = getSortedCards();
+    const sortedCard = sortedCards[sortedIndex];
+    return gameState.maos[playerId].indexOf(sortedCard);
   };
 
   return (
     <div className={styles.gameContainer} onClick={() => setLastActivityTime(Date.now())}>
-      <LanguageToggle />
-      <BugReportButton gameId={gameId} playerId={playerId} />
+      <div className={styles.headerControls}>
+        <div className={styles.headerLeft}>
+          <Logo size="small" />
+        </div>
+        <div className={styles.headerRight}>
+          <LanguageToggle />
+          <ThemeToggle />
+          <BugReportButton gameId={gameId} playerId={playerId} />
+        </div>
+      </div>
       <div className={styles.header}>
         <h2>{t('game_room', { id: gameId })}</h2>
         <div className={styles.gameInfo}>
@@ -1387,7 +1365,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
               key={id} 
               className={`${styles.playerCard} 
                 ${id === playerId ? styles.currentPlayer : ''} 
-                ${isPlayerTurn() && gameState.ordem_jogada?.[gameState.current_player_idx || 0] === id ? styles.activePlayer : ''} 
+                ${gameState.ordem_jogada?.[gameState.current_player_idx || 0] === id ? styles.activePlayer : ''} 
                 ${(gameState.last_round_winner === id || gameState.last_trick_winner === id) ? styles.lastWinner : ''}
                 ${isPlayerInactive(id) ? styles.inactivePlayer : ''}
                 ${isPlayerWaiting(id) ? styles.waitingPlayer : ''}`}
@@ -1441,11 +1419,6 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
                 </div>
               </div>
               <div className={styles.cardLabel}>{t('middle_card')}</div>
-              {gameState.middle_card_workaround?.used && (
-                <div className={styles.workaroundInfo}>
-                  <p>⚠️ {t('all_cards_dealt')}</p>
-                </div>
-              )}
             </div>
             <div className={styles.manilhaContainer}>
               <div className={styles.manilhaInfo}>
@@ -1573,15 +1546,24 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
       {gameState?.maos && gameState.maos[playerId] && gameState.maos[playerId].length > 0 && 
        !isOneCardHand && (
         <div className={styles.handContainer}>
-          <h3>{t('your_hand')}</h3>
+          <div className={styles.handHeader}>
+            <h3>{t('your_hand')}</h3>
+            <button 
+              onClick={toggleCardSorting}
+              className={`${styles.filterButton} ${isCardsSorted ? styles.filterActive : ''}`}
+              title={isCardsSorted ? t('show_original_order') : t('sort_by_strength')}
+            >
+              📶
+            </button>
+          </div>
           <div className={styles.cards}>
-            {gameState.maos[playerId].map((card, index) => (
+            {getSortedCards().map((card, index) => (
               <button
-                key={index}
-                onClick={() => gameState.estado === 'jogando' && isPlayerTurn() && !isPlayingCard ? playCard(index) : null}
+                key={`${card}-${index}`}
+                onClick={() => gameState.estado === 'jogando' && isPlayerTurn() && !isPlayingCard ? playCard(getOriginalCardIndex(index)) : null}
                 className={`${styles.card} ${getCardColorClass(card)} ${
                   gameState.estado === 'jogando' && isPlayerTurn() && !isPlayingCard ? styles.playable : ''
-                } ${clickedCardIndex === index ? styles.cardSelected : ''}`}
+                } ${clickedCardIndex === getOriginalCardIndex(index) ? styles.cardSelected : ''}`}
                 disabled={gameState.estado !== 'jogando' || !isPlayerTurn() || isPlayingCard}
               >
                 <div className={styles.cardContent}>
@@ -1612,20 +1594,6 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
                 <span>?</span>
               </div>
             </button>
-          </div>
-        </div>
-      )}
-
-      {gameState?.palpites && Object.keys(gameState.palpites).length > 0 && (
-        <div className={styles.betsInfo}>
-          <h3>{t('betting_phase')}</h3>
-          <div className={styles.betsList}>
-            {Object.entries(gameState.palpites).map(([pid, betValue]) => (
-              <div key={pid} className={styles.betItem}>
-                <span className={styles.betPlayer}>{gameState.player_names[Number(pid)]}</span>
-                <span className={styles.betValue}>{betValue}</span>
-              </div>
-            ))}
           </div>
         </div>
       )}

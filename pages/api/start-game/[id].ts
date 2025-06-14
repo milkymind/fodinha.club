@@ -61,9 +61,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const round = 1;
     
     // Calculate cards per player dynamically based on number of players
-    // For the first hand, start with 1 card per player
-    const cardsPerPlayer = 1;
-    
     // Calculate maximum cards per player for this game
     // We need to consider two scenarios:
     // 1. Normal case: max_cards = floor((40 - 1) / num_players) - reserve 1 card for middle
@@ -71,6 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const maxCardsWithMiddleCard = Math.floor(39 / players.length); // Normal case
     const maxCardsWithWorkaround = Math.floor(40 / players.length); // Workaround case
     const maxCardsPerPlayer = maxCardsWithWorkaround; // Use the higher maximum
+    
+    // Use the startFrom setting to determine initial card count
+    const cardsPerPlayer = lobby.startFrom === 'max' ? maxCardsPerPlayer : 1;
     
     console.log(`Game setup: ${players.length} players, starting with ${cardsPerPlayer} cards`);
     console.log(`Max with middle card reserved: ${maxCardsWithMiddleCard}`);
@@ -168,6 +168,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       first_player: firstPlayer,
       cartas: cardsPerPlayer,
       eliminados: [],
+      // Initialize hand progression settings
+      direction: lobby.startFrom === 'max' ? 'down' : 'up',
+      startFrom: lobby.startFrom,
+      maxCardsPerPlayer: maxCardsPerPlayer,
       // Initialize tie-related flags
       tie_in_previous_round: false,
       tie_resolved_by_tiebreaker: false,

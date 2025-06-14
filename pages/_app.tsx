@@ -5,6 +5,7 @@ import '../src/App.css'
 import io, { Socket } from 'socket.io-client';
 import { SocketContext } from '../contexts/SocketContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -103,10 +104,12 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [socket]);
 
   return (
-    <LanguageProvider>
-    <SocketContext.Provider value={socket}>
-      <Component {...pageProps} />
-    </SocketContext.Provider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <SocketContext.Provider value={socket}>
+          <Component {...pageProps} />
+        </SocketContext.Provider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 } 

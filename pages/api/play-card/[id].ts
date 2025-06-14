@@ -35,6 +35,8 @@ interface GameState {
   last_round_winner?: number;
   last_trick_winner?: number; // Keeping this for backward compatibility
   direction?: 'up' | 'down';
+  startFrom?: 'one' | 'max';
+  maxCardsPerPlayer?: number;
   round_over_timestamp?: number; // To add a delay between rounds
   cards_played_this_round?: number; // Track how many cards played in current round
   tie_in_previous_round?: boolean; // Track if there was a tie in previous round
@@ -568,8 +570,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Check for eliminated players
           gameState.eliminados = gameState.players.filter(pid => gameState.vidas[pid] <= 0);
           
-          if (gameState.players.filter(pid => !gameState.eliminados.includes(pid)).length <= 1) {
-            // Only one or fewer players remain, game is over
+          // Check if game should end based on number of players and eliminations
+          const totalPlayers = gameState.players.length;
+          const eliminatedCount = gameState.eliminados.length;
+          let gameEnds = false;
+          
+          if (totalPlayers <= 4) {
+            // 4 or fewer players: game ends when 1 player is eliminated
+            gameEnds = eliminatedCount >= 1;
+          } else if (totalPlayers >= 5 && totalPlayers <= 8) {
+            // 5-8 players: game ends when 2 players are eliminated
+            gameEnds = eliminatedCount >= 2;
+          } else if (totalPlayers >= 9 && totalPlayers <= 10) {
+            // 9-10 players: game ends when 3 players are eliminated
+            gameEnds = eliminatedCount >= 3;
+          }
+          
+          if (gameEnds) {
+            // Game is over
             gameState.estado = 'terminado';
           } else {
             // Ready to start a new hand

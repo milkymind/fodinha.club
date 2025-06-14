@@ -1,0 +1,66 @@
+.logoContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.logoImage {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.logoSmall {
+  width: 100px;
+  height: 60px;
+}
+
+.logoMedium {
+  width: 200px;
+  height: 120px;
+}
+
+.logoLarge {
+  width: 500px;
+  height: 300px;
+  max-width: 90vw;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .logoLarge {
+    width: 400px;
+    height: 240px;
+  }
+  
+  .logoMedium {
+    width: 160px;
+    height: 96px;
+  }
+  
+  .logoSmall {
+    width: 80px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logoLarge {
+    width: 300px;
+    height: 180px;
+  }
+  
+  .logoMedium {
+    width: 120px;
+    height: 72px;
+  }
+  
+  .logoSmall {
+    width: 60px;
+    height: 36px;
+  }
+} 

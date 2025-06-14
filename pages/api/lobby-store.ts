@@ -3,18 +3,20 @@ type Lobby = {
   players: { id: number; name: string }[];
   maxPlayers: number;
   lives: number;
+  startFrom?: 'one' | 'max';
   gameStarted?: boolean;
   gameState?: any;
 };
 
 const lobbies: Record<string, Lobby> = {};
 
-export function createLobby(gameId: string, playerName: string, lives: number): Lobby {
+export function createLobby(gameId: string, playerName: string, lives: number, startFrom?: 'one' | 'max'): Lobby {
   const lobby: Lobby = {
     gameId,
     players: [{ id: 1, name: playerName }],
     maxPlayers: 10,
     lives,
+    startFrom: startFrom || 'one',
     gameStarted: false,
     gameState: null,
   };

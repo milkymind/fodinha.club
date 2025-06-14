@@ -4,11 +4,14 @@ import Game from '../src/components/Game';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageToggle from '../src/components/LanguageToggle';
 import BugReportButton from '../src/components/BugReportButton';
+import Logo from '../components/Logo';
+import ThemeToggle from '../components/ThemeToggle';
 
 interface LobbyInfo {
   players: { id: number; name: string }[];
   maxPlayers: number;
   lives: number;
+  startFrom?: 'one' | 'max';
 }
 
 export default function Home() {
@@ -19,6 +22,7 @@ export default function Home() {
   const [joinGameId, setJoinGameId] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [lives, setLives] = useState<number>(3);
+  const [startFrom, setStartFrom] = useState<'one' | 'max'>('one');
   const [lobbyInfo, setLobbyInfo] = useState<LobbyInfo | null>(null);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -33,7 +37,8 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           player_name: playerName,
-          lives: lives 
+          lives: lives,
+          start_from: startFrom 
         }),
       });
       const data = await response.json();
@@ -148,8 +153,17 @@ export default function Home() {
     const isHost = lobbyInfo.players[0]?.id === playerId;
     return (
       <div className={styles.container}>
-        <LanguageToggle />
-        <BugReportButton gameId={gameId} playerId={playerId} />
+        <div className={styles.headerControls}>
+          <div className={styles.headerLeft}>
+            <Logo size="small" />
+          </div>
+          <div className={styles.headerRight}>
+            <LanguageToggle />
+            <ThemeToggle />
+            <BugReportButton gameId={gameId} playerId={playerId} />
+          </div>
+        </div>
+        <Logo size="large" />
         <h2>{t('lobby', { id: gameId })}</h2>
         <div className={styles.section}>
           <h3>{t('players_count', { current: lobbyInfo.players.length, max: lobbyInfo.maxPlayers })}</h3>
@@ -178,9 +192,18 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <LanguageToggle />
-      <BugReportButton />
-      <h1 className={styles.title}>{t('title')}</h1>
+      <div className={styles.headerControls}>
+        <div className={styles.headerLeft}>
+          <Logo size="small" />
+        </div>
+        <div className={styles.headerRight}>
+          <LanguageToggle />
+          <ThemeToggle />
+          <BugReportButton />
+        </div>
+      </div>
+      <Logo size="large" />
+      <div className={styles.titleSpacing}></div>
       {error && (
         <div className={styles.error}>
           {error}
@@ -217,6 +240,24 @@ export default function Home() {
               className={`${styles.livesButton} ${lives === 7 ? styles.selected : ''}`}
             >
               {t('lives_count', { count: 7 })}
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.startFromSelection}>
+          <h3>{t('start_game_from')}</h3>
+          <div className={styles.startFromOptions}>
+            <button 
+              onClick={() => setStartFrom('one')} 
+              className={`${styles.startFromButton} ${startFrom === 'one' ? styles.selected : ''}`}
+            >
+              {t('one_card_hand')}
+            </button>
+            <button 
+              onClick={() => setStartFrom('max')} 
+              className={`${styles.startFromButton} ${startFrom === 'max' ? styles.selected : ''}`}
+            >
+              {t('max_card_hand')}
             </button>
           </div>
         </div>
@@ -285,7 +326,7 @@ export default function Home() {
             <h3>{t('card_hierarchy')}</h3>
             <div className={styles.hierarchyProgression}>
               <p><strong>{t('card_hierarchy_progression')}</strong></p>
-              <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }} className={styles.hierarchyNote}>
                 {t('card_hierarchy_note')}
               </p>
             </div>

@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { player_name, lives } = req.body;
+    const { player_name, lives, start_from } = req.body;
 
     if (!player_name) {
       return res.status(400).json({ status: 'error', error: 'Player name is required' });
@@ -19,11 +19,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Create the lobby object
     const numLives = typeof lives === 'number' ? lives : 3;
+    const startFromSetting: 'one' | 'max' = start_from === 'max' ? 'max' : 'one';
     const lobby = {
       gameId,
       players: [{ id: 1, name: player_name }],
       maxPlayers: 10,
       lives: numLives,
+      startFrom: startFromSetting,
       gameStarted: false,
       gameState: null,
     };

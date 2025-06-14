@@ -1,5 +1,6 @@
+import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import styles from '../styles/LanguageToggle.module.css';
+import styles from '../../styles/HeaderButton.module.css';
 
 export default function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage();
@@ -7,13 +8,14 @@ export default function LanguageToggle() {
   return (
     <button
       onClick={toggleLanguage}
-      className={styles.languageToggle}
-      title={language === 'en' ? 'Switch to Portuguese' : 'Mudar para Inglês'}
+      className={styles.headerButton}
+      aria-label={`Switch to ${language === 'en' ? 'Portuguese' : 'English'}`}
+      title={`Switch to ${language === 'en' ? 'Portuguese' : 'English'}`}
     >
-      <span className={styles.flag}>
+      <span className={styles.buttonIcon}>
         {language === 'en' ? '🇧🇷' : '🇺🇸'}
       </span>
-      <span className={styles.langText}>
+      <span className={styles.buttonText}>
         {language === 'en' ? 'PT' : 'EN'}
       </span>
     </button>
