@@ -9,6 +9,7 @@ type Lobby = {
   players: { id: number; name: string }[];
   maxPlayers: number;
   lives: number;
+  startFrom?: 'one' | 'max';
   gameStarted?: boolean;
   gameState?: any;
   lastUpdated?: string; // ISO string of the last update time

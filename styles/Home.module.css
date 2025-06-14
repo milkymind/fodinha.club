@@ -3,18 +3,55 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.title {
-  color: #333;
+.headerControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
+  position: relative;
+  width: 100%;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.titleSpacing {
+  height: 0;
+}
+ 
+.title {
+  color: var(--text-primary);
+  margin-bottom: 2rem;
+  transition: color 0.3s ease;
 }
 
 .section {
-  background-color: #f8f9fa;
+  background-color: var(--bg-secondary);
   padding: 2rem;
   border-radius: 8px;
   margin: 2rem 0;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 100%;
 }
 
 .inputGroup {
@@ -26,9 +63,18 @@
   font-size: 1rem;
   width: 100%;
   max-width: 300px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   margin-bottom: 1rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(255, 132, 0, 0.2);
 }
 
 .buttonGroup {
@@ -36,7 +82,7 @@
 }
 
 .button {
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -44,15 +90,21 @@
   cursor: pointer;
   font-size: 1rem;
   margin: 0.5rem;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .button:hover {
-  background-color: #0056b3;
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 132, 0, 0.3);
 }
 
 .button:disabled {
-  background-color: #6c757d;
+  background-color: var(--text-muted);
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .gameSection {
@@ -123,9 +175,9 @@
 
 .livesButton {
   padding: 0.5rem 1rem;
-  border: 2px solid #007bff;
-  background-color: #fff;
-  color: #007bff;
+  border: 2px solid var(--primary-color);
+  background-color: var(--bg-primary);
+  color: var(--primary-color);
   font-weight: bold;
   border-radius: 4px;
   cursor: pointer;
@@ -133,11 +185,44 @@
 }
 
 .livesButton:hover {
-  background-color: #e6f2ff;
+  background-color: rgba(255, 132, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .livesButton.selected {
-  background-color: #007bff;
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.startFromSelection {
+  margin: 1rem 0;
+}
+
+.startFromOptions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.startFromButton {
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--primary-color);
+  background-color: var(--bg-primary);
+  color: var(--primary-color);
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.startFromButton:hover {
+  background-color: rgba(255, 132, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.startFromButton.selected {
+  background-color: var(--primary-color);
   color: white;
 }
 
@@ -162,17 +247,19 @@
 }
 
 .rulesSection h3 {
-  color: #007bff;
+  color: var(--primary-color);
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
   font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .rulesSection h4 {
-  color: #333;
+  color: var(--primary-color);
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .rulesSection ul, .rulesSection ol {
@@ -183,47 +270,66 @@
 .rulesSection li {
   margin: 0.3rem 0;
   line-height: 1.4;
+  color: var(--text-primary);
 }
 
 .rulesSection p {
   margin: 0.5rem 0;
   line-height: 1.5;
-  color: #555;
+  color: var(--text-primary);
 }
 
 .rulesSection strong {
-  color: #333;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .cardHierarchy {
-  background-color: #ffffff;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
+  /* Removed dark frame - now just normal text formatting */
+  margin: 1rem 0;
+}
+
+.cardHierarchy h3 {
+  color: var(--primary-color);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .importantNote {
-  background-color: #d1ecf1;
+  background-color: var(--bg-accent);
   padding: 0.75rem;
   border-radius: 6px;
-  border-left: 4px solid #17a2b8;
+  border-left: 4px solid var(--primary-color);
   margin: 0.5rem 0;
   font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
 }
 
 .hierarchyProgression {
-  background-color: #f8f9fa;
-  border-left: 4px solid #007bff;
-  padding: 1rem;
-  border-radius: 0 8px 8px 0;
   margin: 1rem 0;
+  padding: 0;
+  /* Removed background styling */
+}
+
+.hierarchyProgression p {
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+  line-height: 1.5;
 }
 
 .hierarchyProgression p:first-child {
   font-size: 1.1rem;
   letter-spacing: 0.5px;
-  margin: 0;
-  color: #333;
+  margin: 0.5rem 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.hierarchyNote {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
 } 

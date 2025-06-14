@@ -132,14 +132,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   // Implement the wave pattern for cards per hand
   if (!gameState.direction) {
-    gameState.direction = 'up';
+    // Initialize direction based on startFrom setting
+    gameState.direction = (gameState.startFrom === 'max') ? 'down' : 'up';
   }
   
   // If we're starting a new hand, calculate the cards per player
   if (gameState.estado === 'aguardando') {
     if (gameState.cartas === undefined) {
-      // First hand always starts with 1 card
-      gameState.cartas = 1;
+      // First hand starts based on startFrom setting
+      if (gameState.startFrom === 'max') {
+        gameState.cartas = maxCardsPerPlayer;
+      } else {
+        gameState.cartas = 1;
+      }
     } else {
       if (gameState.direction === 'up') {
         gameState.cartas++;

@@ -1,0 +1,91 @@
+.themeToggle {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.themeToggle:focus {
+  outline: 2px solid #ff8400;
+  outline-offset: 2px;
+}
+
+.toggleTrack {
+  width: 50px;
+  height: 26px;
+  background: linear-gradient(135deg, #ff8400, #ff9900);
+  border-radius: 25px;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.themeToggle.light .toggleTrack {
+  background: linear-gradient(135deg, #ff8400, #ff9900);
+}
+
+.themeToggle.dark .toggleTrack {
+  background: linear-gradient(135deg, #cc6600, #ff8400);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  width: 22px;
+  height: 22px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbLight {
+  left: 2px;
+  background: linear-gradient(135deg, #fff, #f0f0f0);
+}
+
+.thumbDark {
+  left: 26px;
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+}
+
+.icon {
+  font-size: 12px;
+  line-height: 1;
+  transition: all 0.3s ease;
+}
+
+.thumbLight .icon {
+  filter: brightness(1.2);
+}
+
+.thumbDark .icon {
+  filter: brightness(0.9);
+}
+
+/* Hover effects */
+.themeToggle:hover .toggleTrack {
+  transform: scale(1.05);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 132, 0, 0.3);
+}
+
+.themeToggle:hover .toggleThumb {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Active state */
+.themeToggle:active .toggleTrack {
+  transform: scale(0.95);
+}
+
+.themeToggle:active .toggleThumb {
+  transform: scale(0.9);
+} 

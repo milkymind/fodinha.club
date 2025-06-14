@@ -16,6 +16,9 @@ const translations = {
     'lives_count': '{{count}} Lives',
     'create_new_game': 'Create New Game',
     'join_existing_game': 'Join Existing Game',
+    'start_game_from': 'Start Game From:',
+    'one_card_hand': '1 Card Hand',
+    'max_card_hand': 'Max Card Hand',
     'game_id': 'Game ID',
     'join_game': 'Join Game',
     'game_created': 'Game Created!',
@@ -131,6 +134,23 @@ const translations = {
     'connection_error': 'Connection error. Game continues via backup connection.',
     'reconnecting': 'Reconnecting...',
     'reconnected': 'Reconnected successfully',
+    
+    // Bug Report
+    'report_bug': 'Report Bug',
+    'describe_bug': 'Describe the bug',
+    'bug_description_placeholder': 'Please describe what happened, what you expected to happen, and any steps to reproduce the issue...',
+    'contact_info_optional': 'Contact Info (Optional)',
+    'contact_placeholder': 'Email or other contact info (optional)',
+    'game_info': 'Game Information',
+    'cancel': 'Cancel',
+    'send_report': 'Send Report',
+    'sending': 'Sending...',
+    'bug_report_sent': 'Bug Report Sent!',
+    'bug_report_thanks': 'Thank you for helping us improve the game!',
+    
+    // Card Sorting
+    'sort_by_strength': 'Sort cards by strength (weakest first)',
+    'show_original_order': 'Show original card order',
   },
   
   pt: {
@@ -142,6 +162,9 @@ const translations = {
     'lives_count': '{{count}} Vidas',
     'create_new_game': 'Criar Novo Jogo',
     'join_existing_game': 'Entrar em Jogo Existente',
+    'start_game_from': 'Começar Jogo Desde:',
+    'one_card_hand': 'índio',
+    'max_card_hand': 'Max Cartas',
     'game_id': 'Código do Jogo',
     'join_game': 'Entrar no Jogo',
     'game_created': 'Jogo Criado!',
@@ -257,6 +280,23 @@ const translations = {
     'connection_error': 'Erro de conexão. O jogo continua via conexão de backup.',
     'reconnecting': 'Reconectando...',
     'reconnected': 'Reconectado com sucesso',
+    
+    // Bug Report
+    'report_bug': 'Reportar Bug',
+    'describe_bug': 'Descreva o bug',
+    'bug_description_placeholder': 'Por favor, descreva o que aconteceu, o que você esperava que acontecesse e quaisquer passos para reproduzir o problema...',
+    'contact_info_optional': 'Informações de Contato (Opcional)',
+    'contact_placeholder': 'E-mail ou outras informações de contato (opcional)',
+    'game_info': 'Informações do Jogo',
+    'cancel': 'Cancelar',
+    'send_report': 'Enviar Relatório',
+    'sending': 'Enviando...',
+    'bug_report_sent': 'Relatório de Bug Enviado!',
+    'bug_report_thanks': 'Obrigado por nos ajudar a melhorar o jogo!',
+    
+    // Card Sorting
+    'sort_by_strength': 'Ordenar cartas por força (mais fraca primeiro)',
+    'show_original_order': 'Mostrar ordem original das cartas',
   }
 };
 

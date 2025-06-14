@@ -4,6 +4,26 @@
   padding: 2rem;
 }
 
+.headerControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  position: relative;
+  width: 100%;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -25,34 +45,40 @@
 }
 
 .gameInfo {
-  background-color: #f8f9fa;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  background: none;
 }
 
 .handInfo {
   font-weight: bold;
-  color: #28a745;
+  color: var(--primary-color);
+  margin: 0;
 }
 
 .roundInfo {
   font-weight: bold;
-  color: #007bff;
+  color: var(--primary-color);
+  margin: 0;
 }
 
 .actionButton {
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
   margin: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
 }
 
 .actionButton:hover {
-  background-color: #0056b3;
+  background-color: var(--primary-hover);
 }
 
 .tableInfo {
@@ -67,6 +93,50 @@
 
 .handContainer {
   margin: 2rem 0;
+}
+
+.handHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.handHeader h3 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.filterButton {
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  min-width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filterButton:hover {
+  border-color: var(--primary-color);
+  background-color: var(--bg-accent);
+}
+
+.filterButton.filterActive {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.filterButton.filterActive:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .cards {
@@ -147,26 +217,36 @@
   padding: 0.5rem;
   font-size: 1rem;
   width: 80px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.betInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(255, 132, 0, 0.2);
 }
 
 .betsInfo {
-  background-color: #f8f9fa;
+  background-color: var(--bg-secondary);
   padding: 1rem;
   border-radius: 8px;
   margin: 2rem 0;
+  color: var(--text-primary);
 }
 
 .playersList {
   margin: 2rem 0;
-  background-color: #f8f9fa;
+  background-color: var(--bg-secondary);
   border-radius: 8px;
   padding: 1rem;
 }
 
 .playersList h3 {
   margin-top: 0;
+  color: var(--text-primary);
 }
 
 .playersGrid {
@@ -176,11 +256,12 @@
 }
 
 .playerCard {
-  background-color: #fff;
-  border: 1px solid #e9ecef;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0.75rem;
   transition: transform 0.2s, box-shadow 0.2s;
+  color: var(--text-primary);
 }
 
 .playerCard.currentPlayer {
@@ -192,17 +273,18 @@
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
   border-color: #28a745;
+  border-width: 2px;
 }
 
 .playerCard.inactivePlayer {
   opacity: 0.6;
-  background-color: #f8f9fa;
+  background-color: var(--bg-secondary);
   border-color: #dc3545;
 }
 
 .playerCard.waitingPlayer {
-  border-color: #ffc107;
-  background-color: #fffbeb;
+  border-color: var(--primary-color);
+  border-width: 2px;
 }
 
 .playerCard.lastWinner {
@@ -492,12 +574,13 @@
 }
 
 .multiplier {
-  background-color: #ffc107;
-  color: #212529;
+  background-color: var(--primary-color);
+  color: white;
   font-weight: bold;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   display: inline-block;
+  margin: 0;
 }
 
 .heartSuit, .diamondSuit {
@@ -529,16 +612,16 @@
   margin-bottom: 0.3rem;
   margin-top: 0.5rem;
   text-align: center;
-  background-color: #fff3cd;
+  background-color: var(--bg-accent);
   border-radius: 6px;
   padding: 0.5rem;
-  border: 1px solid #ffeaa7;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px var(--shadow);
 }
 
 .needsLabel {
   font-size: 0.7rem;
-  color: #856404;
+  color: var(--text-secondary);
   margin-bottom: 0.2rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -548,7 +631,7 @@
 .needsValue {
   font-size: 1.6rem;
   font-weight: bold;
-  color: #856404;
+  color: var(--primary-color);
   line-height: 1;
 }
 

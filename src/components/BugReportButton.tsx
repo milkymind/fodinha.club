@@ -1,44 +1,37 @@
 import React, { useState } from 'react';
+import BugReportModal from './BugReportModal';
 import { useLanguage } from '../../contexts/LanguageContext';
-import styles from '../styles/BugReportButton.module.css';
-import BugReportModal from '../../components/BugReportModal';
+import styles from '../../styles/HeaderButton.module.css';
 
 interface BugReportButtonProps {
   gameId?: string;
   playerId?: number;
 }
 
-const BugReportButton: React.FC<BugReportButtonProps> = ({ gameId, playerId }) => {
-  const { language } = useLanguage();
+export default function BugReportButton({ gameId, playerId }: BugReportButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const { t } = useLanguage();
 
   return (
     <>
       <button
-        onClick={openModal}
-        className={styles.bugReportButton}
-        title={language === 'en' ? 'Report a Bug' : 'Reportar Bug'}
-        aria-label={language === 'en' ? 'Report a Bug' : 'Reportar Bug'}
+        onClick={() => setIsModalOpen(true)}
+        className={styles.headerButton}
+        aria-label="Report a bug"
+        title="Report a bug"
       >
-        <span className={styles.bugIcon}>🐛</span>
-        <span className={styles.buttonText}>
-          {language === 'en' ? 'BUG' : 'BUG'}
-        </span>
+        <span className={styles.buttonIcon}>🐛</span>
+        <span className={styles.buttonText}>Bug</span>
       </button>
-
+      
       {isModalOpen && (
         <BugReportModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
           gameId={gameId}
           playerId={playerId}
-          isOpen={isModalOpen}
-          onClose={closeModal}
         />
       )}
     </>
   );
-};
-
-export default BugReportButton; 
+} 
