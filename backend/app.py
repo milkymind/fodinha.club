@@ -12,7 +12,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # ── Lobby & Game Management ───────────────────────────────────────────────────
 # games will store: { room_id: {"players": [player_id_1, player_id_2, ...], "game": FodinhaGame_instance} }
 games = {}
-MAX_PLAYERS_PER_LOBBY = 6
+MAX_PLAYERS_PER_LOBBY = 10
 
 def generate_room_id():
     """Generates a short, unique room ID."""

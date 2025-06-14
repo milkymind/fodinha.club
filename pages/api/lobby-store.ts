@@ -13,7 +13,7 @@ export function createLobby(gameId: string, playerName: string, lives: number): 
   const lobby: Lobby = {
     gameId,
     players: [{ id: 1, name: playerName }],
-    maxPlayers: 6,
+    maxPlayers: 10,
     lives,
     gameStarted: false,
     gameState: null,

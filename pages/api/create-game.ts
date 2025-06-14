@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const lobby = {
       gameId,
       players: [{ id: 1, name: player_name }],
-      maxPlayers: 6,
+      maxPlayers: 10,
       lives: numLives,
       gameStarted: false,
       gameState: null,

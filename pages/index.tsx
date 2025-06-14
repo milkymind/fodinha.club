@@ -3,6 +3,7 @@ import styles from '../styles/Home.module.css';
 import Game from '../src/components/Game';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageToggle from '../src/components/LanguageToggle';
+import BugReportButton from '../src/components/BugReportButton';
 
 interface LobbyInfo {
   players: { id: number; name: string }[];
@@ -148,6 +149,7 @@ export default function Home() {
     return (
       <div className={styles.container}>
         <LanguageToggle />
+        <BugReportButton gameId={gameId} playerId={playerId} />
         <h2>{t('lobby', { id: gameId })}</h2>
         <div className={styles.section}>
           <h3>{t('players_count', { current: lobbyInfo.players.length, max: lobbyInfo.maxPlayers })}</h3>
@@ -177,6 +179,7 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <LanguageToggle />
+      <BugReportButton />
       <h1 className={styles.title}>{t('title')}</h1>
       {error && (
         <div className={styles.error}>
@@ -280,15 +283,12 @@ export default function Home() {
           
           <div className={styles.cardHierarchy}>
             <h3>{t('card_hierarchy')}</h3>
-            <ol>
-              <li><strong>{t('card_hierarchy_manilha')}</strong></li>
-              <li><strong>{t('card_hierarchy_aces')}</strong></li>
-              <li><strong>{t('card_hierarchy_kings')}</strong></li>
-              <li><strong>{t('card_hierarchy_jacks')}</strong></li>
-              <li><strong>{t('card_hierarchy_queens')}</strong></li>
-              <li><strong>{t('card_hierarchy_middle')}</strong></li>
-              <li><strong>{t('card_hierarchy_low')}</strong></li>
-            </ol>
+            <div className={styles.hierarchyProgression}>
+              <p><strong>{t('card_hierarchy_progression')}</strong></p>
+              <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+                {t('card_hierarchy_note')}
+              </p>
+            </div>
           </div>
           
           <h3>{t('how_to_play_section')}</h3>

@@ -26,6 +26,10 @@ interface GameState {
   eliminados: number[];
   direction?: 'up' | 'down';
   original_maos?: { [key: number]: string[] };
+  middle_card_workaround?: { // Track middle card workaround usage
+    used: boolean;
+    card?: string;
+  };
 }
 
 // Add response cache for faster 304 responses

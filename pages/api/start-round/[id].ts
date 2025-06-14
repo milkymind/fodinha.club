@@ -111,8 +111,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     gameState.current_round = (gameState.current_round || 0) + 1;
   }
   
-  // Calculate the maximum number of cards per player
-  const maxCardsPerPlayer = 5; // Maximum of 5 cards per player in a hand
+  // Calculate the maximum number of cards per player dynamically
+  // We need to consider two scenarios:
+  // 1. Normal case: max_cards = floor((40 - 1) / num_players) - reserve 1 card for middle
+  // 2. Workaround case: max_cards = floor(40 / num_players) - use all 40 cards
+  const activePlayers = gameState.players.filter((id: number) => !gameState.eliminados.includes(id));
+  const numActivePlayers = activePlayers.length;
+  
+  // Calculate both possible maximums
+  const maxCardsWithMiddleCard = Math.floor(39 / numActivePlayers); // Normal case
+  const maxCardsWithWorkaround = Math.floor(40 / numActivePlayers); // Workaround case
+  
+  // The actual maximum is the higher of the two
+  const maxCardsPerPlayer = maxCardsWithWorkaround;
+  
+  console.log(`Dynamic card calculation: ${numActivePlayers} players`);
+  console.log(`Max with middle card reserved: ${maxCardsWithMiddleCard}`);
+  console.log(`Max with workaround: ${maxCardsWithWorkaround}`);
+  console.log(`Using maximum: ${maxCardsPerPlayer} cards per player`);
   
   // Implement the wave pattern for cards per hand
   if (!gameState.direction) {
@@ -146,25 +162,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Create and shuffle deck
   const deck = createDeck();
   
-  // Deal middle card (for manilha)
-  const middleCard = deck.shift();
-  if (middleCard) {
-    gameState.carta_meio = middleCard.value + middleCard.suit;
-    gameState.manilha = getNextManilha(gameState.carta_meio);
+  // Check if we need the middle card workaround
+  const totalCardsNeeded = numActivePlayers * gameState.cartas;
+  const needsMiddleCardWorkaround = totalCardsNeeded === 40;
+  
+  let middleCard: { value: string; suit: string } | undefined;
+  let middleCardAssignedTo: number | undefined;
+  
+  if (needsMiddleCardWorkaround) {
+    // Special case: all 40 cards will be dealt to players
+    // Show middle card to everyone, then randomly assign it to a player
+    middleCard = deck.shift();
+    if (middleCard) {
+      gameState.carta_meio = middleCard.value + middleCard.suit;
+      gameState.manilha = getNextManilha(gameState.carta_meio);
+      
+      // Randomly assign this card to one of the active players
+      middleCardAssignedTo = activePlayers[Math.floor(Math.random() * activePlayers.length)];
+      console.log(`Middle card workaround: ${gameState.carta_meio} shown to all, assigned to player ${middleCardAssignedTo}`);
+    }
+  } else {
+    // Normal case: deal middle card (for manilha) and keep it separate
+    middleCard = deck.shift();
+    if (middleCard) {
+      gameState.carta_meio = middleCard.value + middleCard.suit;
+      gameState.manilha = getNextManilha(gameState.carta_meio);
+    }
   }
   
   // Deal cards to players
   gameState.maos = {};
-  for (const player of gameState.players) {
-    if (!gameState.eliminados.includes(player)) {
-      gameState.maos[player] = [];
-      for (let i = 0; i < gameState.cartas; i++) {
-        const card = deck.shift();
-        if (card) {
-          gameState.maos[player].push(card.value + card.suit);
-        }
+  for (const player of activePlayers) {
+    gameState.maos[player] = [];
+    for (let i = 0; i < gameState.cartas; i++) {
+      const card = deck.shift();
+      if (card) {
+        gameState.maos[player].push(card.value + card.suit);
       }
     }
+    
+    // If this player was assigned the middle card, add it to their hand
+    if (needsMiddleCardWorkaround && player === middleCardAssignedTo && middleCard) {
+      gameState.maos[player].push(middleCard.value + middleCard.suit);
+    }
+  }
+  
+  // Store information about the middle card workaround for UI display
+  if (needsMiddleCardWorkaround) {
+    gameState.middle_card_workaround = {
+      used: true,
+      card: gameState.carta_meio
+    };
+  } else {
+    gameState.middle_card_workaround = {
+      used: false
+    };
   }
   
   // For one-card hands, store original hands to reference when playing
@@ -172,9 +224,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     gameState.original_maos = JSON.parse(JSON.stringify(gameState.maos));
     console.log("This is a one-card hand, preserving original cards");
   }
-  
-  // Get active players (not eliminated)
-  const activePlayers = gameState.players.filter((id: number) => !gameState.eliminados.includes(id));
   
   // Set up betting phase
   gameState.estado = 'apostas';

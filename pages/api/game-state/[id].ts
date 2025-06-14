@@ -98,9 +98,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         lobby.gameState.cartas && 
         lobby.gameState.current_round < lobby.gameState.cartas) {
       
-      // If it's been at least 750ms since the round ended
+      // If it's been at least 2000ms since the round ended
       if (lobby.gameState.round_over_timestamp && 
-          Date.now() - lobby.gameState.round_over_timestamp >= 750) {
+          Date.now() - lobby.gameState.round_over_timestamp >= 2000) {
         
         console.log(`Starting next round after delay for game ${id}`);
         shouldUpdateLobby = true;

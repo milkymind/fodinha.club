@@ -87,17 +87,12 @@ const translations = {
     'game_overview': '📋 Game Overview',
     'game_overview_text': 'Fodinha is a Brazilian trick-taking card game where players try to predict exactly how many tricks (rounds) they will win. The goal is to make your exact bet - no more, no less!',
     'game_setup': '🎮 Game Setup',
-    'game_setup_players': 'Players: 2-6 players',
+    'game_setup_players': 'Players: 2-10 players',
     'game_setup_lives': 'Lives: Each player starts with 3, 5, or 7 lives',
-    'game_setup_cards': 'Cards: Standard 52-card deck with special card hierarchy',
-    'card_hierarchy': '🃏 Card Hierarchy (Strongest to Weakest)',
-    'card_hierarchy_manilha': 'Manilha: The card that comes after the middle card (changes each hand)',
-    'card_hierarchy_aces': 'Aces (A)',
-    'card_hierarchy_kings': 'Kings (K)',
-    'card_hierarchy_jacks': 'Jacks (J)',
-    'card_hierarchy_queens': 'Queens (Q)',
-    'card_hierarchy_middle': '7, 6, 5, 4',
-    'card_hierarchy_low': '3, 2 (weakest)',
+    'game_setup_cards': 'Cards: 40-card deck (standard deck with 8, 9, 10 removed)',
+    'card_hierarchy': '🃏 Card Hierarchy (Weakest to Strongest)',
+    'card_hierarchy_progression': '4 < 5 < 6 < 7 < Q < J < K < A < 2 < 3 < Manilha',
+    'card_hierarchy_note': 'Manilha: The card that comes after the middle card (changes each hand)',
     'how_to_play_section': '🎯 How to Play',
     'betting_phase_rules': '1. Betting Phase',
     'betting_phase_text1': 'Look at your cards and predict how many tricks you\'ll win',
@@ -125,6 +120,9 @@ const translations = {
     'special_rule2': 'Card Cancellation: Cards of the same strength cancel in pairs as they\'re played',
     'special_rule3': 'Crown Highlight: The current winning card in each trick is highlighted with a crown 👑',
     'pro_tip': '💡 Pro Tip: Take your time in the betting phase! Your success depends on accurately predicting your performance.',
+    
+    // Middle Card Workaround
+    'all_cards_dealt': 'All 40 cards dealt to players',
     
     // Error Messages
     'failed_to_create': 'Failed to create game',
@@ -186,7 +184,7 @@ const translations = {
     
     // Apostas
     'make_your_bet': 'Faça Sua Aposta',
-    'bet': 'Apostar',
+    'bet': 'Faz',
     'invalid_bet_error': 'Aposta inválida: O total de apostas não pode ser igual ao número de cartas na rodada.',
     'total_bets_so_far': 'Apostas até agora: {{current}} / {{total}}',
     'needs_to_win': 'Precisa Fazer',
@@ -215,17 +213,12 @@ const translations = {
     'game_overview': '📋 Visão Geral do Jogo',
     'game_overview_text': 'Fodinha é um jogo de cartas brasileiro de vazas onde os jogadores tentam prever exatamente quantas vazas (rodadas) irão ganhar. O objetivo é fazer exatamente sua aposta - nem mais, nem menos!',
     'game_setup': '🎮 Configuração do Jogo',
-    'game_setup_players': 'Jogadores: 2-6 jogadores',
+    'game_setup_players': 'Jogadores: 2-10 jogadores',
     'game_setup_lives': 'Vidas: Cada jogador começa com 3, 5 ou 7 vidas',
-    'game_setup_cards': 'Cartas: Baralho padrão de 52 cartas com hierarquia especial',
-    'card_hierarchy': '🃏 Hierarquia das Cartas (Mais Forte para Mais Fraca)',
-    'card_hierarchy_manilha': 'Manilha: A carta que vem depois da carta do meio (muda a cada mão)',
-    'card_hierarchy_aces': 'Ases (A)',
-    'card_hierarchy_kings': 'Reis (K)',
-    'card_hierarchy_jacks': 'Valetes (J)',
-    'card_hierarchy_queens': 'Damas (Q)',
-    'card_hierarchy_middle': '7, 6, 5, 4',
-    'card_hierarchy_low': '3, 2 (mais fracas)',
+    'game_setup_cards': 'Cartas: Baralho de 40 cartas (baralho padrão sem 8, 9, 10)',
+    'card_hierarchy': '🃏 Hierarquia das Cartas (Mais Fraca para Mais Forte)',
+    'card_hierarchy_progression': '4 < 5 < 6 < 7 < Q < J < K < A < 2 < 3 < Manilha',
+    'card_hierarchy_note': 'Manilha: A carta que vem depois da carta do meio (muda a cada mão)',
     'how_to_play_section': '🎯 Como Jogar',
     'betting_phase_rules': '1. Fase de Apostas',
     'betting_phase_text1': 'Olhe suas cartas e preveja quantas vazas você vai ganhar',
@@ -254,7 +247,10 @@ const translations = {
     'special_rule3': 'Destaque da Coroa: A carta vencedora atual em cada vaza é destacada com uma coroa 👑',
     'pro_tip': '💡 Dica Profissional: Dedique tempo na fase de apostas! Seu sucesso depende de prever com precisão seu desempenho.',
     
-    // Mensagens de Erro
+    // Middle Card Workaround
+    'all_cards_dealt': 'Todas 40 cartas distribuídas aos jogadores',
+    
+    // Error Messages
     'failed_to_create': 'Falha ao criar jogo',
     'failed_to_join': 'Falha ao entrar no jogo',
     'failed_to_connect': 'Falha ao conectar com o servidor do jogo',

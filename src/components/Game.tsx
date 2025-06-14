@@ -3,6 +3,7 @@ import { SocketContext } from '../../contexts/SocketContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import styles from '../styles/Game.module.css';
 import LanguageToggle from './LanguageToggle';
+import BugReportButton from './BugReportButton';
 
 interface GameProps {
   gameId: string;
@@ -40,6 +41,7 @@ interface GameState {
   tie_resolved_by_tiebreaker?: boolean;
   winning_card_played_by?: number;
   cancelled_cards?: [number, string][];
+  middle_card_workaround?: { used: boolean; card?: string };
 }
 
 export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
@@ -1123,6 +1125,13 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   const isCancelledCard = (playerIdOfCard: number, card: string): boolean => {
     if (!gameState || !gameState.mesa || gameState.mesa.length < 2) return false;
     
+    // In the final round of a hand, cards should not be shown as cancelled
+    // because ties will be resolved by suit tiebreaker
+    const isLastRoundOfHand = gameState.current_round === gameState.cartas;
+    if (isLastRoundOfHand) {
+      return false; // Never show cards as cancelled in the final round
+    }
+    
     // Get card value for comparison (without suit)
     const getCardValue = (cardStr: string): string => {
       return cardStr.substring(0, cardStr.length - 1);
@@ -1285,6 +1294,33 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
       // If multiple winners with same strength, for final round we could use suit tiebreaker
       // but for display purposes during gameplay, we'll just highlight all tied winners
       if (winners.length > 1) {
+        // Check if this is the final round of the hand
+        const isLastRoundOfHand = gameState.current_round === gameState.cartas;
+        
+        if (isLastRoundOfHand) {
+          // In the final round, use suit tiebreaker to determine the single winner
+          const ORDEM_NAIPE_DESEMPATE = {'♣': 3, '♥': 2, '♠': 1, '♦': 0};
+          
+          let highestSuit = -1;
+          let suitWinner: [number, string] | null = null;
+          
+          for (const [pid, tableCard] of winners) {
+            const suit = tableCard.charAt(tableCard.length - 1);
+            const suitValue = ORDEM_NAIPE_DESEMPATE[suit as keyof typeof ORDEM_NAIPE_DESEMPATE] || 0;
+            
+            if (suitValue > highestSuit) {
+              highestSuit = suitValue;
+              suitWinner = [pid, tableCard];
+            }
+          }
+          
+          if (suitWinner) {
+            const [winnerPid, winnerCard] = suitWinner;
+            return winnerPid === playerIdOfCard && winnerCard === card;
+          }
+        }
+        
+        // For non-final rounds or if suit tiebreaker fails, highlight all tied winners
         const isWinner = winners.some(([pid, tableCard]) => 
           pid === playerIdOfCard && tableCard === card
         );
@@ -1298,6 +1334,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   return (
     <div className={styles.gameContainer} onClick={() => setLastActivityTime(Date.now())}>
       <LanguageToggle />
+      <BugReportButton gameId={gameId} playerId={playerId} />
       <div className={styles.header}>
         <h2>{t('game_room', { id: gameId })}</h2>
         <div className={styles.gameInfo}>
@@ -1404,6 +1441,11 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
                 </div>
               </div>
               <div className={styles.cardLabel}>{t('middle_card')}</div>
+              {gameState.middle_card_workaround?.used && (
+                <div className={styles.workaroundInfo}>
+                  <p>⚠️ {t('all_cards_dealt')}</p>
+                </div>
+              )}
             </div>
             <div className={styles.manilhaContainer}>
               <div className={styles.manilhaInfo}>

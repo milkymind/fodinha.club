@@ -127,9 +127,11 @@ class FodinhaGame:
         self.dealer_idx = random.randint(0, len(self.jogadores) - 1)
         self.cartas = 1
         self.crescendo = True
-        # Adjust max_cartas calculation based on the actual number of players
-        self.max_cartas = len(VALORES) * len(NAIPES) // len(self.jogadores) if self.jogadores else 0
+        # Dynamic max_cartas calculation: 
+        # We can use all 40 cards with the workaround, so max_cards = floor(40 / num_players)
+        self.max_cartas = max(1, (len(VALORES) * len(NAIPES)) // len(self.jogadores)) if self.jogadores else 1
         self.game_over = False
+        print(f"Game initialized with {len(self.jogadores)} players, max {self.max_cartas} cards per player")
 
     def next_round(self):
         if self.game_over:

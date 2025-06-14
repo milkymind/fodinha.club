@@ -104,9 +104,9 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <LanguageProvider>
-      <SocketContext.Provider value={socket}>
-        <Component {...pageProps} />
-      </SocketContext.Provider>
+    <SocketContext.Provider value={socket}>
+      <Component {...pageProps} />
+    </SocketContext.Provider>
     </LanguageProvider>
   );
 } 

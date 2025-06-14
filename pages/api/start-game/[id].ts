@@ -18,6 +18,12 @@ function createDeck() {
   return shuffle(deck);
 }
 
+function getNextManilha(carta: string): string {
+  const value = carta.substring(0, carta.length - 1);
+  const valueIndex = VALUES.indexOf(value);
+  return VALUES[(valueIndex + 1) % VALUES.length];
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ status: 'error', error: 'Method not allowed' });
@@ -53,18 +59,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const player_names = Object.fromEntries(lobby.players.map((p) => [p.id, p.name]));
     const vidas = Object.fromEntries(lobby.players.map((p) => [p.id, lobby.lives]));
     const round = 1;
-    const deck = createDeck();
-    const hands: Record<number, string[]> = {};
-    const cardsPerPlayer = round;
     
-    console.log(`Dealing ${cardsPerPlayer} card(s) to each player`);
-    for (const pid of players) {
-      hands[pid] = deck.splice(0, cardsPerPlayer).map(card => card.value + card.suit);
+    // Calculate cards per player dynamically based on number of players
+    // For the first hand, start with 1 card per player
+    const cardsPerPlayer = 1;
+    
+    // Calculate maximum cards per player for this game
+    // We need to consider two scenarios:
+    // 1. Normal case: max_cards = floor((40 - 1) / num_players) - reserve 1 card for middle
+    // 2. Workaround case: max_cards = floor(40 / num_players) - use all 40 cards
+    const maxCardsWithMiddleCard = Math.floor(39 / players.length); // Normal case
+    const maxCardsWithWorkaround = Math.floor(40 / players.length); // Workaround case
+    const maxCardsPerPlayer = maxCardsWithWorkaround; // Use the higher maximum
+    
+    console.log(`Game setup: ${players.length} players, starting with ${cardsPerPlayer} cards`);
+    console.log(`Max with middle card reserved: ${maxCardsWithMiddleCard}`);
+    console.log(`Max with workaround: ${maxCardsWithWorkaround}`);
+    console.log(`Using maximum: ${maxCardsPerPlayer} cards per player`);
+    
+    // Create and shuffle deck
+    const deck = createDeck();
+    
+    // Check if we need the middle card workaround for this configuration
+    const totalCardsNeeded = players.length * cardsPerPlayer;
+    const needsMiddleCardWorkaround = totalCardsNeeded === 40;
+    
+    let carta_meio: { value: string; suit: string } | undefined;
+    let middleCardAssignedTo: number | undefined;
+    
+    if (needsMiddleCardWorkaround) {
+      // Special case: all 40 cards will be dealt to players
+      // Show middle card to everyone, then randomly assign it to a player
+      carta_meio = deck.shift();
+      if (carta_meio) {
+        // Randomly assign this card to one of the players
+        middleCardAssignedTo = players[Math.floor(Math.random() * players.length)];
+        console.log(`Middle card workaround: ${carta_meio.value}${carta_meio.suit} shown to all, assigned to player ${middleCardAssignedTo}`);
+      }
+    } else {
+      // Normal case: deal middle card (for manilha) and keep it separate
+      carta_meio = deck.shift();
     }
     
-    const carta_meio = deck.shift();
-    const manilha = carta_meio ? VALUES[(VALUES.indexOf(carta_meio.value) + 1) % VALUES.length] : undefined;
+    const manilha = carta_meio ? getNextManilha(carta_meio.value) : '';
     console.log(`Middle card: ${carta_meio?.value}${carta_meio?.suit}, Manilha: ${manilha}`);
+
+    // Deal cards to players
+    const hands: { [key: number]: string[] } = {};
+    for (const player of players) {
+      hands[player] = [];
+      for (let i = 0; i < cardsPerPlayer; i++) {
+        const card = deck.shift();
+        if (card) {
+          hands[player].push(card.value + card.suit);
+        }
+      }
+      
+      // If this player was assigned the middle card, add it to their hand
+      if (needsMiddleCardWorkaround && player === middleCardAssignedTo && carta_meio) {
+        hands[player].push(carta_meio.value + carta_meio.suit);
+      }
+    }
+    
+    console.log(`Dealt ${cardsPerPlayer} card(s) to each player${needsMiddleCardWorkaround ? ' (with middle card workaround)' : ''}`);
 
     // For one-card hands, also keep the original hands for later reference
     // (since we'll remove cards as they're played)
@@ -118,6 +175,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cancelled_cards: [],
       // For tracking player activity
       last_activity: Object.fromEntries(players.map(pid => [pid, Date.now()])),
+      // Store information about the middle card workaround for UI display
+      middle_card_workaround: needsMiddleCardWorkaround ? {
+        used: true,
+        card: carta_meio ? carta_meio.value + carta_meio.suit : ''
+      } : {
+        used: false
+      },
     };
     
     // Set first player to play

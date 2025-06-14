@@ -41,6 +41,10 @@ interface GameState {
   tie_resolved_by_tiebreaker?: boolean; // Track if the tie was resolved by the tiebreaker
   winning_card_played_by?: number; // Track the winning card played by
   cancelled_cards?: [number, string][]; // Track which cards are cancelled in the current round
+  middle_card_workaround?: { // Track middle card workaround usage
+    used: boolean;
+    card?: string;
+  };
 }
 
 function getCardValue(card: string): string {
@@ -216,9 +220,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`Checking if we should transition from round_over to jogando`);
       console.log(`Current round: ${gameState.current_round}, Cards per hand: ${gameState.cartas}`);
       
-      // If it's been at least 750ms since the round ended, start a new round
+      // If it's been at least 2000ms since the round ended, start a new round
       const now = Date.now();
-      if (gameState.round_over_timestamp && now - gameState.round_over_timestamp >= 750) {
+      if (gameState.round_over_timestamp && now - gameState.round_over_timestamp >= 2000) {
         console.log(`Starting next round after delay`);
         // Start the next round
         gameState.estado = 'jogando';
@@ -388,14 +392,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const isLastRoundOfHand = gameState.current_round === gameState.cartas;
         
         if (isLastRoundOfHand) {
-          // In the final round, we must determine a winner even if all cards cancel
-          // Use the last player to play as the winner (standard tiebreaker rule)
-          const lastPlayerId = gameState.mesa[gameState.mesa.length - 1][0];
-          winner = lastPlayerId;
-          console.log(`Final round tie broken by last player rule: player ${winner}`);
-          gameState.tie_resolved_by_tiebreaker = true;
-          gameState.winning_card_played_by = winner;
-          isTie = false; // We found a winner, so not a tie anymore
+          // In the final round, we must determine a winner using suit tiebreaker
+          // Use all the cancelled cards for suit comparison
+          console.log('Final round - using suit tiebreaker on all cancelled cards');
+          let highestSuit = -1;
+          let suitWinner = null;
+          
+          for (const [pid, cardPlayed] of cancelledCards) {
+            const suit = getCardSuit(cardPlayed);
+            const suitValue = ORDEM_NAIPE_DESEMPATE[suit as keyof typeof ORDEM_NAIPE_DESEMPATE] || 0;
+            
+            if (suitValue > highestSuit) {
+              highestSuit = suitValue;
+              suitWinner = pid;
+            }
+          }
+          
+          if (suitWinner) {
+            winner = suitWinner;
+            console.log(`Final round tie broken by suit: winner is player ${winner}`);
+            gameState.tie_resolved_by_tiebreaker = true;
+            gameState.winning_card_played_by = winner;
+            isTie = false; // We found a winner, so not a tie anymore
+          } else {
+            // Fallback to last player rule if suit comparison fails
+            const lastPlayerId = gameState.mesa[gameState.mesa.length - 1][0];
+            winner = lastPlayerId;
+            console.log(`Final round tie broken by last player rule: player ${winner}`);
+            gameState.tie_resolved_by_tiebreaker = true;
+            gameState.winning_card_played_by = winner;
+            isTie = false;
+          }
         } else {
           // Not final round, increase multiplier
           console.log('Increasing multiplier for next round');
@@ -444,19 +471,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Final round - break tie using suit order
             console.log('Breaking tie among remaining cards using suits');
             let highestSuit = -1;
+            let suitWinner = null;
             
             for (const [pid, cardPlayed] of winners) {
               const suit = getCardSuit(cardPlayed);
               const suitValue = ORDEM_NAIPE_DESEMPATE[suit as keyof typeof ORDEM_NAIPE_DESEMPATE] || 0;
               
+              console.log(`Player ${pid} card ${cardPlayed}: suit ${suit} = ${suitValue}`);
+              
               if (suitValue > highestSuit) {
                 highestSuit = suitValue;
-                winner = pid;
+                suitWinner = pid;
               }
             }
-            console.log(`Tie broken by suit: winner is player ${winner}`);
-            gameState.tie_resolved_by_tiebreaker = true;
-            gameState.winning_card_played_by = winner;
+            
+            if (suitWinner) {
+              winner = suitWinner;
+              console.log(`Tie broken by suit: winner is player ${winner} with suit value ${highestSuit}`);
+              gameState.tie_resolved_by_tiebreaker = true;
+              gameState.winning_card_played_by = winner;
+            } else {
+              // Fallback to last player rule if suit comparison fails
+              const lastPlayerId = gameState.mesa[gameState.mesa.length - 1][0];
+              winner = lastPlayerId;
+              console.log(`Fallback: tie broken by last player rule: player ${winner}`);
+              gameState.tie_resolved_by_tiebreaker = true;
+              gameState.winning_card_played_by = winner;
+            }
           } else {
             // Not final round - this becomes a tie
             console.log('Tie among remaining cards - increasing multiplier');
