@@ -1,22 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUser, useClerk, SignInButton } from '@clerk/nextjs'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useGuest } from '../contexts/GuestContext'
-import BugReportModal from './BugReportModal'
+import { useTheme } from '../contexts/ThemeContext'
+import { useScroll } from '../contexts/ScrollContext'
+import BugReportModal from '../src/components/BugReportModal'
 
 interface CustomUserMenuProps {
   gameId?: string;
   playerId?: number;
   isGuest?: boolean;
+  hideOnScroll?: boolean;
 }
 
-export default function CustomUserMenu({ gameId, playerId, isGuest = false }: CustomUserMenuProps) {
+export default function CustomUserMenu({ gameId, playerId, isGuest = false, hideOnScroll = false }: CustomUserMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isBugModalOpen, setIsBugModalOpen] = useState(false)
   const { user, isLoaded } = useUser()
   const { signOut, openUserProfile } = useClerk()
   const { t, toggleLanguage, language } = useLanguage()
   const { guestName, setIsGuest } = useGuest()
+  const { isDarkMode, toggleTheme } = useTheme()
+  const { isScrolledDown } = useScroll()
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when scrolling down
+  useEffect(() => {
+    if (hideOnScroll && isScrolledDown) {
+      setIsOpen(false);
+    }
+  }, [isScrolledDown, hideOnScroll]);
 
   // Automatically clear guest mode when user becomes authenticated
   useEffect(() => {
@@ -62,9 +75,11 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false }: Cu
     // The useEffect above will automatically clear guest mode when auth succeeds
   }
 
+  const hiddenClass = hideOnScroll && isScrolledDown ? 'hidden' : '';
+
   return (
     <>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }} className={hiddenClass}>
         {/* Profile Picture Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -164,135 +179,59 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false }: Cu
 
             {/* Menu Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {/* Guest Sign In/Sign Up Options */}
+              {/* Guest Sign In Section */}
               {isGuest && (
-                <>
+                <div style={{
+                  backgroundColor: '#6366f1',
+                  borderRadius: '6px',
+                  padding: '6px',
+                  border: '1px solid #6366f1'
+                }}>
                   <SignInButton mode="modal">
                     <button
                       style={{
                         width: '100%',
-                        backgroundColor: '#4f46e5',
+                        backgroundColor: '#6366f1',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '6px',
+                        borderRadius: '4px',
                         padding: '10px 12px',
                         fontSize: '13px',
                         cursor: 'pointer',
-                        transition: 'background-color 0.2s',
+                        transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#4f46e5'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#6366f1'
+                      }}
                       onClick={handleSignInClick}
                     >
                       🚀 Sign In
                     </button>
                   </SignInButton>
-                </>
+                </div>
               )}
 
-              {/* Leaderboard Button */}
-              <button
-                onClick={handleLeaderboard}
-                style={{
-                  width: '100%',
-                  backgroundColor: 'transparent',
-                  color: '#fff',
-                  border: '1px solid #333',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a'
-                  e.currentTarget.style.borderColor = '#444'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.borderColor = '#333'
-                }}
-              >
-                🏆 Leaderboard
-              </button>
-
-              {/* Bug Report Button */}
-              <button
-                onClick={handleBugReport}
-                style={{
-                  width: '100%',
-                  backgroundColor: 'transparent',
-                  color: '#fff',
-                  border: '1px solid #333',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a'
-                  e.currentTarget.style.borderColor = '#444'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.borderColor = '#333'
-                }}
-              >
-                🐛 Report Bug
-              </button>
-
-              {/* Language Toggle Button */}
-              <button
-                onClick={() => {
-                  toggleLanguage()
-                  setIsOpen(false)
-                }}
-                style={{
-                  width: '100%',
-                  backgroundColor: 'transparent',
-                  color: '#fff',
-                  border: '1px solid #333',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a'
-                  e.currentTarget.style.borderColor = '#444'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.borderColor = '#333'
-                }}
-              >
-                🌐 {language === 'en' ? 'Português' : 'English'}
-              </button>
-
-              {/* User Settings Button (only for authenticated users) */}
-              {!isGuest && (
+              {/* Section 1: Leaderboard */}
+              <div style={{
+                backgroundColor: '#2a2a2a',
+                borderRadius: '6px',
+                padding: '6px',
+                border: '1px solid #333'
+              }}>
                 <button
-                  onClick={handleUserSettings}
+                  onClick={handleLeaderboard}
                   style={{
                     width: '100%',
                     backgroundColor: 'transparent',
                     color: '#fff',
-                    border: '1px solid #333',
-                    borderRadius: '6px',
+                    border: 'none',
+                    borderRadius: '4px',
                     padding: '10px 12px',
                     fontSize: '13px',
                     cursor: 'pointer',
@@ -302,28 +241,38 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false }: Cu
                     gap: '8px'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2a2a2a'
-                    e.currentTarget.style.borderColor = '#444'
+                    e.currentTarget.style.backgroundColor = '#3a3a3a'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.borderColor = '#333'
                   }}
                 >
-                  ⚙️ Settings
+                  🏆 Leaderboard
                 </button>
-              )}
+              </div>
 
-              {/* Sign Out Button (only for authenticated users) */}
-              {!isGuest && (
+              {/* Section 2: Language & Theme */}
+              <div style={{
+                backgroundColor: '#2a2a2a',
+                borderRadius: '6px',
+                padding: '6px',
+                border: '1px solid #333',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                {/* Language Toggle Button */}
                 <button
-                  onClick={handleSignOut}
+                  onClick={() => {
+                    toggleLanguage()
+                    setIsOpen(false)
+                  }}
                   style={{
                     width: '100%',
                     backgroundColor: 'transparent',
-                    color: '#ff6b6b',
-                    border: '1px solid #333',
-                    borderRadius: '6px',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
                     padding: '10px 12px',
                     fontSize: '13px',
                     cursor: 'pointer',
@@ -333,19 +282,143 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false }: Cu
                     gap: '8px'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2a2a2a'
-                    e.currentTarget.style.borderColor = '#ff6b6b'
-                    e.currentTarget.style.color = '#ff8a8a'
+                    e.currentTarget.style.backgroundColor = '#3a3a3a'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.borderColor = '#333'
-                    e.currentTarget.style.color = '#ff6b6b'
                   }}
                 >
-                  🚪 Sign Out
+                  🌐 {language === 'en' ? 'Português' : 'English'}
                 </button>
-              )}
+
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={() => {
+                    toggleTheme()
+                    setIsOpen(false)
+                  }}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'transparent',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3a3a3a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  {isDarkMode ? '☀️' : '🌙'} {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                </button>
+              </div>
+
+              {/* Section 3: Actions */}
+              <div style={{
+                backgroundColor: '#2a2a2a',
+                borderRadius: '6px',
+                padding: '6px',
+                border: '1px solid #333',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                {/* Bug Report Button */}
+                <button
+                  onClick={handleBugReport}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'transparent',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3a3a3a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  🐛 Report Bug
+                </button>
+
+                {/* User Settings Button (only for authenticated users) */}
+                {!isGuest && (
+                  <button
+                    onClick={handleUserSettings}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '10px 12px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3a3a3a'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    ⚙️ Settings
+                  </button>
+                )}
+
+                {/* Sign Out Button (only for authenticated users) */}
+                {!isGuest && (
+                  <button
+                    onClick={handleSignOut}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: '#ff6b6b',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '10px 12px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3a3a3a'
+                      e.currentTarget.style.color = '#ff8a8a'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                      e.currentTarget.style.color = '#ff6b6b'
+                    }}
+                  >
+                    🚪 Sign Out
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

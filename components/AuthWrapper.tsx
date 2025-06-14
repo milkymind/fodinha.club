@@ -2,6 +2,7 @@ import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs'
 import { ReactNode } from 'react'
 import CustomUserMenu from './CustomUserMenu'
 import { useGuest } from '../contexts/GuestContext'
+import styles from '../styles/Home.module.css'
 
 interface AuthWrapperProps {
   children: ReactNode
@@ -16,13 +17,8 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
   if (isGuest) {
     return (
       <>
-        <div style={{
-          position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          zIndex: 1000
-        }}>
-          <CustomUserMenu gameId={gameId} playerId={playerId} isGuest={true} />
+        <div className={styles.userMenuContainer}>
+          <CustomUserMenu gameId={gameId} playerId={playerId} isGuest={true} hideOnScroll={true} />
         </div>
         {children}
       </>
@@ -100,13 +96,8 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
 
       {/* Show this when user IS signed in */}
       <SignedIn>
-        <div style={{
-          position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          zIndex: 1000
-        }}>
-          <CustomUserMenu gameId={gameId} playerId={playerId} isGuest={false} />
+        <div className={styles.userMenuContainer}>
+          <CustomUserMenu gameId={gameId} playerId={playerId} isGuest={false} hideOnScroll={true} />
         </div>
         {children}
       </SignedIn>

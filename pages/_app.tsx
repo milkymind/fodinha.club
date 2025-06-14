@@ -6,6 +6,8 @@ import io, { Socket } from 'socket.io-client';
 import { SocketContext } from '../contexts/SocketContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { GuestProvider } from '../contexts/GuestContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
+import { ScrollProvider } from '../contexts/ScrollContext';
 import { ClerkProvider } from '@clerk/nextjs';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -162,13 +164,17 @@ CLERK_SECRET_KEY=sk_test_...`}
       signInFallbackRedirectUrl="/"
       signUpFallbackRedirectUrl="/"
     >
-      <GuestProvider>
-        <LanguageProvider>
-          <SocketContext.Provider value={socket}>
-            <Component {...pageProps} />
-          </SocketContext.Provider>
-        </LanguageProvider>
-      </GuestProvider>
+      <ThemeProvider>
+        <GuestProvider>
+          <LanguageProvider>
+            <SocketContext.Provider value={socket}>
+              <ScrollProvider>
+                <Component {...pageProps} />
+              </ScrollProvider>
+            </SocketContext.Provider>
+          </LanguageProvider>
+        </GuestProvider>
+      </ThemeProvider>
     </ClerkProvider>
   );
 } 
