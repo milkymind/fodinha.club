@@ -1280,12 +1280,12 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
         
         // Check if it's a manilha
         if (value === gameState?.manilha) {
-          const ORDEM_NAIPE_MANILHA = {'♠': 13, '♥': 12, '♦': 11, '♣': 10};
+          const ORDEM_NAIPE_MANILHA = {'♣': 10, '♦': 11, '♥': 12, '♠': 13};
           return ORDEM_NAIPE_MANILHA[suit as keyof typeof ORDEM_NAIPE_MANILHA] || 0;
         }
         
         // Regular card strength
-        const ORDEM_CARTAS = {'3': 9, '2': 8, 'A': 7, 'K': 6, 'J': 5, 'Q': 4, '7': 3, '6': 2, '5': 1, '4': 0};
+        const ORDEM_CARTAS = {'4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9};
         return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
       };
       
