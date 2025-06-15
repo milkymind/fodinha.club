@@ -30,6 +30,9 @@ out/
 # Production
 build/
 
+# TypeScript
+tsconfig.tsbuildinfo
+
 # Runtime data
 pids
 *.pid
@@ -64,5 +67,4 @@ pids
 .env.test.local
 .env.production.local
 
-# Vercel
-.vercel
+

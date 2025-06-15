@@ -54,24 +54,20 @@ Predict the number of **tricks** (round wins) you'll win each round. Get it wron
 
 ## 🚀 Deployment Options
 
-### ✅ Option 1: Deploy to Vercel (Recommended)
+### ✅ Option 1: Deploy to Render (Recommended)
 
 1. Fork or clone this repository to your GitHub account
-2. Sign up at [https://vercel.com](https://vercel.com)
-3. Connect your GitHub account to Vercel
-4. Import this project repository
-5. Click **Deploy**
+2. Sign up at [https://render.com](https://render.com)
+3. Connect your GitHub account to Render
+4. Create a new Web Service from your repository
+5. Set the build command to `npm run build` and start command to `npm run start`
+6. Click **Deploy**
 
-⚠️ **Important Production Notes**: 
-- The default implementation uses in-memory storage for production which has limitations:
-  - Game data resets if the Vercel instance restarts
-  - Memory is not shared between serverless functions
-  - Instances may freeze after 10-15 minutes of inactivity
-- For a more robust production setup, consider using:
-  - Vercel KV (Redis-based storage)
-  - MongoDB Atlas
-  - Supabase
-  - Or any other persistent database service
+✅ **Production Benefits**: 
+- Uses persistent file-based storage (no data loss on restarts)
+- Reliable hosting with consistent performance
+- No serverless limitations - full Node.js environment
+- Automatic SSL certificates and custom domains
 
 ### 🖥️ Option 2: Run Locally
 

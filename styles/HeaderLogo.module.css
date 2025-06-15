@@ -1,0 +1,36 @@
+.headerLogoContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.headerLogoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.headerLogoImage:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .headerLogoContainer {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .headerLogoContainer {
+    width: 36px;
+    height: 36px;
+  }
+} 

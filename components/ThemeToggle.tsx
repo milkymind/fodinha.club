@@ -13,10 +13,10 @@ export default function ThemeToggle() {
       title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
     >
       <span className={styles.buttonIcon}>
-        {isDarkMode ? '🌙' : '☀️'}
+        {isDarkMode ? '☀️' : '🌙'}
       </span>
       <span className={styles.buttonText}>
-        {isDarkMode ? 'Dark' : 'Light'}
+        {isDarkMode ? 'Light' : 'Dark'}
       </span>
     </button>
   );

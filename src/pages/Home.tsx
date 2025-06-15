@@ -246,27 +246,15 @@ export default function Home({ demoMode = false, isCheckingBackend = false }: Ho
       )}
       {demoMode && !isCheckingBackend && (
         <div style={{ 
-          background: window.location.hostname.includes('lovable.app') && !window.location.hostname.includes('preview') 
-            ? '#fff3cd' : '#e3f2fd', 
-          color: window.location.hostname.includes('lovable.app') && !window.location.hostname.includes('preview')
-            ? '#856404' : '#1976d2', 
+          background: '#e3f2fd', 
+          color: '#1976d2', 
           padding: '12px', 
           margin: '16px 0', 
           borderRadius: '8px',
-          border: window.location.hostname.includes('lovable.app') && !window.location.hostname.includes('preview')
-            ? '1px solid #ffeaa7' : '1px solid #bbdefb',
+          border: '1px solid #bbdefb',
           textAlign: 'center'
         }}>
-          {window.location.hostname.includes('lovable.app') && !window.location.hostname.includes('preview') ? (
-            <>
-              ⚠️ <strong>Backend Not Available</strong> - The game server is not connected. 
-              You're seeing a demo version. For full multiplayer functionality, the backend needs to be deployed separately.
-            </>
-          ) : (
-            <>
-              🎮 <strong>Demo Mode</strong> - This is a preview version. Try creating or joining a game to see the simulated gameplay!
-            </>
-          )}
+          🎮 <strong>Demo Mode</strong> - This is a preview version. Try creating or joining a game to see the simulated gameplay!
         </div>
       )}
       {error && (

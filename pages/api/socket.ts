@@ -227,24 +227,29 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
   const io = new Server((res.socket as any).server, {
     path: '/api/socket-io',
     addTrailingSlash: false,
-    pingTimeout: 120000, // 2 minutes
-    pingInterval: 25000,
+    pingTimeout: 120000, // 2 minutes - increased for stability
+    pingInterval: 30000, // 30 seconds - increased interval
     cookie: false,
     cors: {
       origin: "*",
       methods: ["GET", "POST"]
     },
-    maxHttpBufferSize: 1e8, // Increase buffer size for larger payloads
-    connectTimeout: 45000,
+    maxHttpBufferSize: 1e6, // 1MB (reduced from 100MB to prevent memory issues)
+    connectTimeout: 45000, // 45 seconds - increased timeout
     transports: ['websocket', 'polling'],
     allowUpgrades: true,
-    // Remove these problematic settings causing immediate disconnections
+    // Simplified compression settings
     perMessageDeflate: {
       threshold: 1024, // Compress messages larger than 1KB
     },
-    // Add these performance settings
+    // Performance settings
     serveClient: false, // Don't serve the client JS file
     httpCompression: true, // Enable HTTP compression
+    // Add connection state recovery for better stability
+    connectionStateRecovery: {
+      maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+      skipMiddlewares: true,
+    },
   });
   (res.socket as any).server.io = io;
 

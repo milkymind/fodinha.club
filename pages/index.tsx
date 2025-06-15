@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import LanguageToggle from '../src/components/LanguageToggle';
 import BugReportButton from '../src/components/BugReportButton';
 import Logo from '../components/Logo';
+import HeaderLogo from '../components/HeaderLogo';
 import ThemeToggle from '../components/ThemeToggle';
 
 interface LobbyInfo {
@@ -94,6 +95,58 @@ export default function Home() {
     }
   };
 
+  const handleReturnToLobby = async () => {
+    if (!gameId || !playerId) return;
+    
+    // Check if this player is the host
+    const isHost = lobbyInfo?.players?.[0]?.id === playerId;
+    
+    if (isHost) {
+      // Host: Make API call to reset game state
+      try {
+        const response = await fetch(`/api/return-to-lobby/${gameId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ player_id: playerId }),
+        });
+        
+        const data = await response.json();
+        if (data.status === 'success') {
+          // Successfully reset to lobby state
+          setGameStarted(false);
+          // Refresh lobby info
+          const lobbyResponse = await fetch(`/api/lobby-info/${gameId}`);
+          const lobbyData = await lobbyResponse.json();
+          if (lobbyData.status === 'success') {
+            setLobbyInfo(lobbyData.lobby);
+          }
+        } else {
+          console.error('Failed to return to lobby:', data.error);
+          setError(data.error || 'Failed to return to lobby');
+        }
+      } catch (error) {
+        console.error('Error returning to lobby:', error);
+        setError('Failed to return to lobby');
+      }
+    } else {
+      // Non-host: Just update local state (triggered by socket event)
+      console.log('Non-host player returning to lobby via socket event');
+      setGameStarted(false);
+      // Refresh lobby info
+      try {
+        const lobbyResponse = await fetch(`/api/lobby-info/${gameId}`);
+        const lobbyData = await lobbyResponse.json();
+        if (lobbyData.status === 'success') {
+          setLobbyInfo(lobbyData.lobby);
+        }
+      } catch (error) {
+        console.error('Error refreshing lobby info:', error);
+      }
+    }
+  };
+
   // Poll lobby info every 2 seconds if in a lobby and game not started
   useEffect(() => {
     if (gameId && playerId && !gameStarted) {
@@ -116,6 +169,30 @@ export default function Home() {
       return () => {
         if (pollingRef.current) clearInterval(pollingRef.current);
       };
+    }
+  }, [gameId, playerId, gameStarted]);
+
+  // Additional polling for players in game to detect lobby return
+  useEffect(() => {
+    if (gameId && playerId && gameStarted) {
+      const pollForLobbyReturn = async () => {
+        try {
+          const response = await fetch(`/api/lobby-info/${gameId}`);
+          const data = await response.json();
+          if (data.status === 'success' && !data.lobby.gameStarted) {
+            // Game has been returned to lobby
+            console.log('Detected lobby return via polling - returning to lobby');
+            setGameStarted(false);
+            setLobbyInfo(data.lobby);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      
+      // Poll every 3 seconds while in game to detect lobby return
+      const pollInterval = setInterval(pollForLobbyReturn, 3000);
+      return () => clearInterval(pollInterval);
     }
   }, [gameId, playerId, gameStarted]);
 
@@ -144,6 +221,7 @@ export default function Home() {
         gameId={gameId}
         playerId={playerId}
         onLeaveGame={handleLeaveGame}
+        onReturnToLobby={handleReturnToLobby}
       />
     );
   }
@@ -155,7 +233,7 @@ export default function Home() {
       <div className={styles.container}>
         <div className={styles.headerControls}>
           <div className={styles.headerLeft}>
-            <Logo size="small" />
+            <HeaderLogo />
           </div>
           <div className={styles.headerRight}>
             <LanguageToggle />
@@ -194,7 +272,7 @@ export default function Home() {
     <div className={styles.container}>
       <div className={styles.headerControls}>
         <div className={styles.headerLeft}>
-          <Logo size="small" />
+          <HeaderLogo />
         </div>
         <div className={styles.headerRight}>
           <LanguageToggle />
@@ -202,7 +280,6 @@ export default function Home() {
           <BugReportButton />
         </div>
       </div>
-      <Logo size="large" />
       <div className={styles.titleSpacing}></div>
       {error && (
         <div className={styles.error}>
@@ -210,6 +287,7 @@ export default function Home() {
         </div>
       )}
       <div className={styles.section}>
+        <Logo size="large" />
         <h2>{t('join_or_create')}</h2>
         <div className={styles.inputGroup}>
           <input

@@ -5,12 +5,14 @@ import styles from '../styles/Game.module.css';
 import LanguageToggle from './LanguageToggle';
 import BugReportButton from './BugReportButton';
 import Logo from '../../components/Logo';
+import HeaderLogo from '../../components/HeaderLogo';
 import ThemeToggle from '../../components/ThemeToggle';
 
 interface GameProps {
   gameId: string;
   playerId: number;
   onLeaveGame: () => void;
+  onReturnToLobby?: () => void;
 }
 
 interface GameState {
@@ -44,9 +46,10 @@ interface GameState {
   winning_card_played_by?: number;
   cancelled_cards?: [number, string][];
   middle_card_workaround?: { used: boolean; card?: string };
+  host_id?: number;
 }
 
-export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
+export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }: GameProps) {
   const socket = useContext(SocketContext);
   const { t } = useLanguage();
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -83,6 +86,9 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   // Card sorting state
   const [isCardsSorted, setIsCardsSorted] = useState<boolean>(false);
   const [originalCardOrder, setOriginalCardOrder] = useState<string[]>([]);
+  
+  // Socket room join tracking
+  const [hasJoinedRoom, setHasJoinedRoom] = useState<boolean>(false);
   
   // Use a ref to track if we're already attempting to reconnect
   const isReconnecting = useRef<boolean>(false);
@@ -133,10 +139,20 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   
   // Set up socket connections and listeners
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log("Socket not available yet");
+      return;
+    }
 
-    // Join the game room with retry logic
+    console.log("Setting up socket event listeners for game", gameId);
+
+    // Join the game room with retry logic - only if we haven't joined yet
     const joinGameRoom = async () => {
+      if (hasJoinedRoom) {
+        console.log("Already joined game room, skipping duplicate join");
+        return;
+      }
+      
       try {
         console.log(`Joining game room ${gameId} as player ${playerId}`);
         socket.emit('join-game', {
@@ -145,24 +161,30 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
           playerName: localStorage.getItem(`player_name_${playerId}`) || `Player ${playerId}`
         });
         
+        setHasJoinedRoom(true); // Mark as joined
+        
         // Set socket as ready after a small delay to ensure connection is established
         setTimeout(() => {
           setSocketReady(true);
         }, 300);
       } catch (error) {
         console.error("Error joining game room:", error);
+        setHasJoinedRoom(false); // Reset flag on error
       }
     };
     
+    // Only join if socket is connected and we haven't joined yet
+    if (socket.connected && !hasJoinedRoom) {
     joinGameRoom();
+    }
 
     // Handle socket connect events
     const onConnect = () => {
       console.log("Socket connected successfully");
       setLastSocketActivity(Date.now());
       
-      // If we were previously connected and in a game, rejoin
-      if (gameId && playerId) {
+      // Only rejoin if we were previously connected and haven't joined yet
+      if (gameId && playerId && !hasJoinedRoom) {
         joinGameRoom();
       }
     };
@@ -170,6 +192,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
     // Handle socket disconnect events
     const onDisconnect = (reason: string) => {
       console.log(`Socket disconnected: ${reason}`);
+      setHasJoinedRoom(false); // Reset join flag on disconnect
       
       // Attempt reconnection if not intentionally disconnected
       if (reason !== "io client disconnect") {
@@ -198,7 +221,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
     // Handle reconnection events
     const onReconnect = (attemptNumber: number) => {
       console.log(`Socket reconnected after ${attemptNumber} attempts`);
-      joinGameRoom();
+      // Don't call joinGameRoom here - it will be called by onConnect if needed
     };
     socket.on('reconnect', onReconnect);
     
@@ -233,6 +256,17 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
         setLastSocketActivity(Date.now());
         const newGameState = data?.gameState;
         const newVersion = data?.version || 0;
+        const lobbyState = data?.lobbyState;
+        
+        // Special case: if gameState is null but we have lobbyState, this means return to lobby
+        if (!newGameState && lobbyState) {
+          console.log("Received lobby return signal - returning to lobby");
+          setIsProcessingGameState(false);
+          if (onReturnToLobby) {
+            onReturnToLobby();
+          }
+          return;
+        }
         
         // Ensure we have valid game state before processing
         if (!newGameState) {
@@ -500,6 +534,25 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
       }
     });
 
+    // Add lobby-returned event handler
+    socket.on('lobby-returned', (data) => {
+      try {
+        console.log('Received lobby-returned event:', data);
+        console.log('Player ID:', playerId, 'Game ID:', gameId);
+        setLastSocketActivity(Date.now());
+        
+        // Call the onReturnToLobby callback to return all players to lobby
+        if (onReturnToLobby) {
+          console.log('Returning to lobby via socket event');
+          onReturnToLobby();
+        } else {
+          console.warn('onReturnToLobby callback not available');
+        }
+      } catch (error) {
+        console.error("Error handling lobby-returned event", error);
+      }
+    });
+
     // Initial game state fetch
     const fetchInitialGameState = async () => {
       try {
@@ -545,6 +598,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
       socket.off('action-received');
       socket.off('action-error');
       socket.off('optimistic-update');
+      socket.off('lobby-returned');
     };
   }, [gameId, playerId, socket, stateVersion, gameState, isProcessingGameState]);
 
@@ -688,7 +742,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
       if (state.current_round && state.cartas && state.current_round < state.cartas) {
         // Between rounds in a multi-card hand
         if (state.tie_in_previous_round) {
-          setGameStatus(t('round_complete', { prev: state.current_round || 1 }));
+          setGameStatus(t('round_complete', { prev: state.current_round || 1, current: (state.current_round || 1) + 1 }));
           setWinnerMessage(t('tie_message', { value: state.multiplicador || 1 }));
           setNotificationType('gameState');
           
@@ -702,7 +756,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
         const roundWinner = state.last_round_winner || state.last_trick_winner;
         if (roundWinner) {
           const winnerName = state.player_names[roundWinner];
-          setGameStatus(t('round_complete', { prev: state.current_round || 1 }));
+          setGameStatus(t('round_complete', { prev: state.current_round || 1, current: (state.current_round || 1) + 1 }));
             setNotificationType('gameState');
           
           // The next player to play is after the dealer (not the round winner)
@@ -712,7 +766,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
               setWaitingMsg('');
           }
         } else {
-          setGameStatus(t('round_complete', { prev: state.current_round || 1 }));
+          setGameStatus(t('round_complete', { prev: state.current_round || 1, current: (state.current_round || 1) + 1 }));
             setWaitingMsg('');
             setNotificationType('gameState');
           }
@@ -1095,9 +1149,43 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   // Check if this is a one-card hand
   const isOneCardHand = gameState?.cartas === 1;
 
-  // Handler for new game (for now, just leave game)
-  const handleNewGame = () => {
-    onLeaveGame();
+  // Handler for new game (only for host - returns to lobby)
+  const handleNewGame = async () => {
+    if (!gameState?.host_id || playerId !== gameState.host_id) return;
+    
+    try {
+      // Send request to reset game to lobby state
+      const response = await fetch(`/api/return-to-lobby/${gameId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ player_id: playerId }),
+      });
+      
+      const data = await response.json();
+      if (data.status === 'success') {
+        // Call the callback to return to lobby view
+        if (onReturnToLobby) {
+          onReturnToLobby();
+        }
+      } else {
+        console.error('Failed to return to lobby:', data.error);
+      }
+    } catch (error) {
+      console.error('Error returning to lobby:', error);
+    }
+  };
+
+  // Check if current player is the host
+  const isHost = () => {
+    // Primary check: use host_id if available
+    if (gameState?.host_id !== undefined) {
+      return gameState.host_id === playerId;
+    }
+    
+    // Fallback: assume player 1 is the host (typical convention)
+    return playerId === 1;
   };
 
   // Check if a player is inactive
@@ -1201,16 +1289,30 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
   const isWinningCard = (playerIdOfCard: number, card: string): boolean => {
     if (!gameState?.mesa || gameState.mesa.length === 0) return false;
     
+    // First check if the server has explicitly set a winning card player
+    // This happens in tie situations resolved by tiebreaker
+    if (gameState.winning_card_played_by !== undefined) {
+      // Find the card played by the winning player
+      const winningPlayerCard = gameState.mesa.find(([pid, tableCard]) => 
+        pid === gameState.winning_card_played_by
+      );
+      
+      if (winningPlayerCard) {
+        const [winningPid, winningCard] = winningPlayerCard;
+        return playerIdOfCard === winningPid && card === winningCard;
+      }
+    }
+    
     // Get all cards on the table
     const tableCards = gameState.mesa;
     
     // Find the card we're checking
     const cardOnTable = tableCards.find(([pid, tableCard]) => 
-      pid === playerIdOfCard && tableCard === card
-    );
+        pid === playerIdOfCard && tableCard === card
+      );
     
-    if (!cardOnTable) return false;
-    
+      if (!cardOnTable) return false;
+      
     // Check if this is a cancelled card first
     if (isCancelledCard(playerIdOfCard, card)) {
       return false;
@@ -1235,18 +1337,18 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
         const ORDEM_NAIPE = {'♠': 3, '♥': 2, '♦': 1, '♣': 0};
         return ORDEM_NAIPE[suit as keyof typeof ORDEM_NAIPE] || 0;
       };
-      
+        
       const maxManilhaStrength = Math.max(...manilhaCards.map(([, tableCard]) => getCardStrength(tableCard)));
       return getCardStrength(card) === maxManilhaStrength;
-    }
-    
+        }
+        
     // No manilhas on table, find highest regular card
     const getCardStrength = (cardStr: string): number => {
       const value = cardStr.substring(0, cardStr.length - 1);
       const ORDEM_CARTAS = {'3': 10, '2': 9, 'A': 8, 'K': 7, 'J': 6, 'Q': 5, '7': 4, '6': 3, '5': 2, '4': 1};
-      return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
-    };
-    
+        return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
+      };
+      
     const maxStrength = Math.max(...tableCards.map(([, tableCard]) => getCardStrength(tableCard)));
     return getCardStrength(card) === maxStrength;
   };
@@ -1259,7 +1361,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
       // Store original order before sorting
       setOriginalCardOrder([...gameState.maos[playerId]]);
       setIsCardsSorted(true);
-    } else {
+        } else {
       // Return to original order
       setIsCardsSorted(false);
     }
@@ -1270,8 +1372,8 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
     
     if (!isCardsSorted) {
       return gameState.maos[playerId];
-    }
-    
+      }
+      
     // Sort cards by strength (lowest to highest, left to right)
     return [...gameState.maos[playerId]].sort((a, b) => {
       const getCardStrength = (cardStr: string): number => {
@@ -1305,12 +1407,12 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
     <div className={styles.gameContainer} onClick={() => setLastActivityTime(Date.now())}>
       <div className={styles.headerControls}>
         <div className={styles.headerLeft}>
-          <Logo size="small" />
+          <HeaderLogo />
         </div>
         <div className={styles.headerRight}>
-          <LanguageToggle />
+      <LanguageToggle />
           <ThemeToggle />
-          <BugReportButton gameId={gameId} playerId={playerId} />
+      <BugReportButton gameId={gameId} playerId={playerId} />
         </div>
       </div>
       <div className={styles.header}>
@@ -1547,7 +1649,7 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
        !isOneCardHand && (
         <div className={styles.handContainer}>
           <div className={styles.handHeader}>
-            <h3>{t('your_hand')}</h3>
+          <h3>{t('your_hand')}</h3>
             <button 
               onClick={toggleCardSorting}
               className={`${styles.filterButton} ${isCardsSorted ? styles.filterActive : ''}`}
@@ -1620,12 +1722,16 @@ export default function Game({ gameId, playerId, onLeaveGame }: GameProps) {
               </div>
             ))}
           </div>
-          <button className={styles.actionButton} onClick={handleNewGame}>
+          <div className={styles.gameOverButtons}>
+            {isHost() && onReturnToLobby && (
+              <button className={styles.actionButton} onClick={onReturnToLobby}>
             {t('new_game')}
           </button>
+            )}
           <button className={styles.leaveButton} onClick={onLeaveGame}>
             {t('leave_game')}
           </button>
+          </div>
         </div>
       )}
     </div>
