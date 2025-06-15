@@ -9,8 +9,17 @@ const ScrollContext = createContext<ScrollContextType | undefined>(undefined);
 export function ScrollProvider({ children }: { children: React.ReactNode }) {
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isClient, setIsClient] = useState(false);
+
+  // Handle client-side hydration
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
+    // Only run on client side after hydration
+    if (!isClient || typeof window === 'undefined') return;
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       
@@ -27,10 +36,10 @@ export function ScrollProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+  }, [lastScrollY, isClient]);
 
   return (
-    <ScrollContext.Provider value={{ isScrolledDown }}>
+    <ScrollContext.Provider value={{ isScrolledDown: isClient ? isScrolledDown : false }}>
       {children}
     </ScrollContext.Provider>
   );
@@ -39,7 +48,8 @@ export function ScrollProvider({ children }: { children: React.ReactNode }) {
 export function useScroll() {
   const context = useContext(ScrollContext);
   if (context === undefined) {
-    throw new Error('useScroll must be used within a ScrollProvider');
+    // Return a safe default instead of throwing during SSR
+    return { isScrolledDown: false };
   }
   return context;
 } 

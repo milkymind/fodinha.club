@@ -23,7 +23,7 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false, hide
   const { isDarkMode, toggleTheme } = useTheme()
   const { isScrolledDown } = useScroll()
   const menuRef = useRef<HTMLDivElement>(null)
-
+  
   // Close dropdown when scrolling down
   useEffect(() => {
     if (hideOnScroll && isScrolledDown) {
