@@ -2,6 +2,7 @@ import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs'
 import { ReactNode } from 'react'
 import CustomUserMenu from './CustomUserMenu'
 import { useGuest } from '../contexts/GuestContext'
+import Logo from './Logo'
 import styles from '../styles/Home.module.css'
 
 interface AuthWrapperProps {
@@ -40,17 +41,19 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
           backgroundColor: '#0a0a0a',
           color: 'white'
         }}>
-          <h1 style={{ fontSize: '3rem', marginBottom: '1rem', color: '#fff' }}>
-            🃏 Fodinha Club
-          </h1>
+          {/* Extra Large Logo - Using Logo component for proper rectangular dimensions */}
+          <div style={{ marginBottom: '0.5rem' }}>
+            <Logo size="large" />
+          </div>
+          
           <p style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#ccc' }}>
-            Choose how you want to play
+            Choose how you want to play.
           </p>
           
           <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column', alignItems: 'center' }}>
             <SignInButton mode="modal">
               <button style={{
-                backgroundColor: '#4f46e5',
+                backgroundColor: '#ff8400',
                 color: 'white',
                 padding: '12px 24px',
                 border: 'none',
@@ -58,9 +61,17 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
                 fontSize: '16px',
                 cursor: 'pointer',
                 transition: 'background-color 0.2s',
-                minWidth: '200px'
-              }}>
-                🚀 Sign In to Play
+                minWidth: '200px',
+                fontWeight: '500'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e67600'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ff8400'
+              }}
+              >
+                Sign In to Play
               </button>
             </SignInButton>
             
@@ -88,7 +99,7 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
                 e.currentTarget.style.color = '#ccc'
               }}
             >
-              👤 Continue as Guest
+              Continue as Guest
             </button>
           </div>
         </div>

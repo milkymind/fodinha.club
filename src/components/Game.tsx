@@ -2,11 +2,8 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { SocketContext } from '../../contexts/SocketContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import styles from '../styles/Game.module.css';
-import LanguageToggle from './LanguageToggle';
-import BugReportButton from './BugReportButton';
-import Logo from '../../components/Logo';
+import homeStyles from '../../styles/Home.module.css';
 import HeaderLogo from '../../components/HeaderLogo';
-import ThemeToggle from '../../components/ThemeToggle';
 
 interface GameProps {
   gameId: string;
@@ -1405,15 +1402,8 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
 
   return (
     <div className={styles.gameContainer} onClick={() => setLastActivityTime(Date.now())}>
-      <div className={styles.headerControls}>
-        <div className={styles.headerLeft}>
-          <HeaderLogo />
-        </div>
-        <div className={styles.headerRight}>
-      <LanguageToggle />
-          <ThemeToggle />
-      <BugReportButton gameId={gameId} playerId={playerId} />
-        </div>
+      <div className={homeStyles.headerLogo}>
+        <HeaderLogo />
       </div>
       <div className={styles.header}>
         <h2>{t('game_room', { id: gameId })}</h2>

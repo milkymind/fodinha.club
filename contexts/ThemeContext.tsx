@@ -12,7 +12,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Load theme preference from localStorage on mount
   useEffect(() => {
@@ -22,8 +22,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       if (savedTheme) {
         setIsDarkMode(savedTheme === 'dark');
       } else {
-        // Default to user's system preference
-        setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+        // Default to dark mode for consistent design
+        setIsDarkMode(true);
       }
     }
   }, []);

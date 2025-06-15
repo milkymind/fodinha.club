@@ -14,6 +14,11 @@ export default function App({ Component, pageProps }: AppProps) {
   const [socketConnected, setSocketConnected] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple socket connections in development mode
+    if (socket) {
+      return;
+    }
+    
     // Initialize socket connection only once
     const initializeSocket = async () => {
       try {
@@ -25,31 +30,23 @@ export default function App({ Component, pageProps }: AppProps) {
           path: '/api/socket-io',
           addTrailingSlash: false,
           reconnection: true,
-          reconnectionAttempts: 5, // Reduced attempts to prevent spam
-          reconnectionDelay: 3000, // Start with 3 second delay
-          reconnectionDelayMax: 15000, // Max 15 seconds between attempts
-          timeout: 45000, // 45 second timeout - match server
-          transports: ['websocket', 'polling'], // Try websocket first, fall back to polling
+          reconnectionAttempts: 3, // Reduced attempts to prevent spam
+          reconnectionDelay: 2000, // Start with 2 second delay
+          reconnectionDelayMax: 10000, // Max 10 seconds between attempts
+          timeout: 20000, // 20 second timeout - reduced for faster failure detection
+          transports: ['polling', 'websocket'], // Match server: polling first to avoid upgrade issues
           forceNew: false, // Don't force new connections - reuse existing ones
           autoConnect: true, // Auto connect on instantiation
-          upgrade: true, // Allow transport upgrade
+          upgrade: false, // Disable transport upgrades to prevent binding errors
           // Add randomization to prevent thundering herd
-          randomizationFactor: 0.5,
-          // Enable connection state recovery
-          auth: {
-            sessionId: typeof window !== 'undefined' ? localStorage.getItem('socket-session-id') : null
-          }
+          randomizationFactor: 0.3,
+          // Remove connection state recovery to match server config
         });
         
         // Set up event listeners
         socketConnection.on('connect', () => {
           console.log('Socket connected:', socketConnection.id);
           setSocketConnected(true);
-          
-          // Store session ID for connection state recovery
-          if (typeof window !== 'undefined' && socketConnection.id) {
-            localStorage.setItem('socket-session-id', socketConnection.id);
-          }
         });
         
         socketConnection.on('disconnect', (reason) => {
@@ -100,12 +97,19 @@ export default function App({ Component, pageProps }: AppProps) {
 
     // Clean up on unmount only
     return () => {
+      // Cleanup will be handled by the socket variable change
+    };
+  }, []); // Empty dependency array - only run once on mount
+
+  // Cleanup effect for socket disconnection
+  useEffect(() => {
+    return () => {
       if (socket) {
         console.log('Cleaning up socket connection');
         socket.disconnect();
       }
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [socket]);
 
   const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 

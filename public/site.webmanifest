@@ -1,7 +1,7 @@
 {
-    "name": "Fodinha.Club - Brazilian Card Game",
+    "name": "Fodinha.Club",
     "short_name": "Fodinha.Club",
-    "description": "Play Fodinha, the classic Brazilian card game, online with friends!",
+    "description": "Play Fodinha online, and join the club!",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",

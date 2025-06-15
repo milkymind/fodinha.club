@@ -30,10 +30,10 @@ export default function BugReportModal({ isOpen, onClose, gameId, playerId }: Bu
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          bugDescription: bugDescription,
+          description: bugDescription,
+          contactInfo: contactInfo,
           gameId,
           playerId,
-          userAgent: navigator.userAgent,
           timestamp: new Date().toISOString(),
         }),
       });

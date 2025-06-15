@@ -195,9 +195,25 @@ const checkRateLimit = (clientId: string, action: string): boolean => {
 };
 
 const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
-  if ((res.socket as any).server.io) {
+  // Check if socket.io is already initialized
+  if ((res.socket as any).server?.io) {
     console.log('Socket already running');
     res.end();
+    return;
+  }
+
+  // Ensure we have a valid server instance
+  const server = (res.socket as any).server;
+  if (!server) {
+    console.error('No server instance available for socket.io');
+    res.status(500).json({ error: 'Server not available' });
+    return;
+  }
+
+  // Additional check for server readiness
+  if (!server.httpServer && !server.listen) {
+    console.error('Server instance is not ready for socket.io');
+    res.status(500).json({ error: 'Server not ready' });
     return;
   }
 
@@ -224,34 +240,37 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   // Modify the socket.io server options to add performance settings
-  const io = new Server((res.socket as any).server, {
-    path: '/api/socket-io',
-    addTrailingSlash: false,
-    pingTimeout: 120000, // 2 minutes - increased for stability
-    pingInterval: 30000, // 30 seconds - increased interval
-    cookie: false,
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"]
-    },
-    maxHttpBufferSize: 1e6, // 1MB (reduced from 100MB to prevent memory issues)
-    connectTimeout: 45000, // 45 seconds - increased timeout
-    transports: ['websocket', 'polling'],
-    allowUpgrades: true,
-    // Simplified compression settings
-    perMessageDeflate: {
-      threshold: 1024, // Compress messages larger than 1KB
-    },
-    // Performance settings
-    serveClient: false, // Don't serve the client JS file
-    httpCompression: true, // Enable HTTP compression
-    // Add connection state recovery for better stability
-    connectionStateRecovery: {
-      maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
-      skipMiddlewares: true,
-    },
-  });
-  (res.socket as any).server.io = io;
+  let io;
+  try {
+    io = new Server(server, {
+      path: '/api/socket-io',
+      addTrailingSlash: false,
+      pingTimeout: 60000, // 1 minute - reduced for dev stability
+      pingInterval: 25000, // 25 seconds
+      cookie: false,
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      },
+      maxHttpBufferSize: 1e6, // 1MB
+      connectTimeout: 30000, // 30 seconds - reduced timeout
+      transports: ['polling', 'websocket'], // Prioritize polling to avoid upgrade issues
+      allowUpgrades: false, // Disable upgrades to prevent binding errors
+      // Simplified compression settings
+      perMessageDeflate: false, // Disable compression to reduce complexity
+      // Performance settings
+      serveClient: false, // Don't serve the client JS file
+      httpCompression: false, // Disable HTTP compression for dev stability
+      // Disable connection state recovery for dev mode stability
+    });
+    
+    server.io = io;
+    console.log('Socket.io server created successfully');
+  } catch (error) {
+    console.error('Failed to create socket.io server:', error);
+    res.status(500).json({ error: 'Failed to initialize socket server' });
+    return;
+  }
 
   // Track ongoing actions to prevent duplicates
   const ongoingActions: Map<string, number> = new Map();

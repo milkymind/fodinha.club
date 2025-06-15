@@ -1,6 +1,7 @@
 {
   "name": "fodinha-card-game",
   "version": "1.1.0",
+  "description": "Play Fodinha, and join the club!",
   "private": true,
   "scripts": {
     "dev": "node scripts/ensure-db.js && next dev -p 3000",
