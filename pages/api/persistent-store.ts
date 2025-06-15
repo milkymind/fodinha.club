@@ -41,7 +41,7 @@ let allLobbiesCache: Record<string, Lobby> | null = null;
 let allLobbiesCacheTime = 0;
 const ALL_LOBBIES_CACHE_TTL = 20 * 1000; // 20 seconds
 
-// Check if we're in production (Vercel) or development environment
+// Check if we're in production or development environment
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (isProduction) {
@@ -171,7 +171,7 @@ export async function getLobby(gameId: string): Promise<Lobby | undefined> {
   // Try up to 3 times in case of file system errors
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      // For production/Vercel, also check the memory cache
+      // For production, also check the memory cache
       if (isProduction && memoryLobbies[gameId]) {
         console.log(`Retrieved lobby ${gameId} from memory cache`);
         
@@ -236,7 +236,7 @@ export async function setLobby(lobby: Lobby): Promise<boolean> {
   // Try up to 3 times in case of file system errors
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      // Save to memory cache first for Vercel
+      // Save to memory cache first for production
       if (isProduction) {
         memoryLobbies[lobby.gameId] = JSON.parse(JSON.stringify(lobby)); // Deep clone to avoid reference issues
       }
@@ -301,7 +301,7 @@ export async function deleteLobby(gameId: string): Promise<boolean> {
     lobbyCache.delete(gameId);
     allLobbiesCache = null;
     
-    // Remove from memory cache for Vercel
+    // Remove from memory cache for production
     if (isProduction) {
       delete memoryLobbies[gameId];
     }

@@ -1,7 +1,7 @@
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   min-height: 100vh;
   background-color: var(--bg-primary);
@@ -12,11 +12,33 @@
   align-items: center;
 }
 
+.topLeftLogo {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.topLeftLogo.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+.headerLogo {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 .headerControls {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   position: relative;
   width: 100%;
 }
@@ -33,7 +55,27 @@
 }
 
 .titleSpacing {
-  height: 0;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Responsive header adjustments */
+@media (max-width: 768px) {
+  .topLeftLogo {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+  
+  .headerLogo {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+  
+  .headerControls {
+    justify-content: center;
+  }
 }
  
 .title {
@@ -44,9 +86,9 @@
 
 .section {
   background-color: var(--bg-secondary);
-  padding: 2rem;
+  padding: 1rem 2rem;
   border-radius: 8px;
-  margin: 2rem 0;
+  margin: 1rem 0;
   border: 1px solid var(--border-color);
   box-shadow: 0 2px 8px var(--shadow);
   transition: all 0.3s ease;
@@ -332,4 +374,25 @@
   color: var(--text-primary);
   font-size: 0.9rem;
   margin-top: 0.5rem;
+}
+
+.userMenuContainer {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.userMenuContainer.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+/* Also add the hidden class as a global utility */
+.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
 } 

@@ -2,10 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import styles from '../styles/Home.module.css';
 import Game from '../src/components/Game';
 import { useLanguage } from '../contexts/LanguageContext';
-import LanguageToggle from '../src/components/LanguageToggle';
-import BugReportButton from '../src/components/BugReportButton';
+
+import { useGuest } from '../contexts/GuestContext';
+import AuthWrapper from '../components/AuthWrapper';
+import UsernameSetup from '../components/UsernameSetup';
 import Logo from '../components/Logo';
-import ThemeToggle from '../components/ThemeToggle';
+import HeaderLogo from '../components/HeaderLogo';
+import { useUser } from '@clerk/nextjs';
 
 interface LobbyInfo {
   players: { id: number; name: string }[];
@@ -16,6 +19,8 @@ interface LobbyInfo {
 
 export default function Home() {
   const { t } = useLanguage();
+  const { user, isLoaded } = useUser();
+  const { isGuest, guestName } = useGuest();
   const [gameId, setGameId] = useState<string>('');
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
@@ -26,6 +31,29 @@ export default function Home() {
   const [lobbyInfo, setLobbyInfo] = useState<LobbyInfo | null>(null);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [showUsernameSetup, setShowUsernameSetup] = useState<boolean>(false);
+
+  // Set default player name from user when loaded or from guest name
+  useEffect(() => {
+    if (isGuest && !playerName) {
+      setPlayerName(guestName);
+    } else if (isLoaded && user && !isGuest) {
+      const defaultName = user.firstName || user.username || 'Player';
+      setPlayerName(defaultName);
+    }
+  }, [isLoaded, user, playerName, isGuest, guestName]);
+
+  // Update player name when transitioning from guest to authenticated
+  useEffect(() => {
+    if (isLoaded && user && !isGuest && playerName === guestName) {
+      const defaultName = user.firstName || user.username || 'Player';
+      setPlayerName(defaultName);
+    }
+  }, [isLoaded, user, isGuest, playerName, guestName]);
+
+  const handleUsernameSet = (username: string) => {
+    setShowUsernameSetup(false);
+  };
 
   const createGame = async () => {
     try {
@@ -94,6 +122,78 @@ export default function Home() {
     }
   };
 
+  const handleReturnToLobby = async () => {
+    if (!gameId || !playerId) return;
+    
+    // Check if this player is the host
+    const isHost = lobbyInfo?.players?.[0]?.id === playerId;
+    
+    if (isHost) {
+      // Host: Make API call to reset game state
+      try {
+        const response = await fetch(`/api/return-to-lobby/${gameId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ player_id: playerId }),
+        });
+        
+        const data = await response.json();
+        if (data.status === 'success') {
+          // Successfully reset to lobby state
+          setGameStarted(false);
+          // Refresh lobby info multiple times to ensure we get updated player list
+          const refreshLobby = async (attempts = 0) => {
+            try {
+              const lobbyResponse = await fetch(`/api/lobby-info/${gameId}`);
+              const lobbyData = await lobbyResponse.json();
+              if (lobbyData.status === 'success') {
+                setLobbyInfo(lobbyData.lobby);
+                console.log(`Lobby refreshed (attempt ${attempts + 1}):`, lobbyData.lobby.players.length, 'players');
+              }
+              // Refresh again after a short delay to catch any players who left
+              if (attempts < 2) {
+                setTimeout(() => refreshLobby(attempts + 1), 1000);
+              }
+            } catch (error) {
+              console.error('Error refreshing lobby info:', error);
+            }
+          };
+          refreshLobby();
+        } else {
+          console.error('Failed to return to lobby:', data.error);
+          setError(data.error || 'Failed to return to lobby');
+        }
+      } catch (error) {
+        console.error('Error returning to lobby:', error);
+        setError('Failed to return to lobby');
+      }
+    } else {
+      // Non-host: Just update local state (triggered by socket event)
+      console.log('Non-host player returning to lobby via socket event');
+      setGameStarted(false);
+      // Refresh lobby info multiple times to ensure we get updated player list
+      const refreshLobby = async (attempts = 0) => {
+        try {
+          const lobbyResponse = await fetch(`/api/lobby-info/${gameId}`);
+          const lobbyData = await lobbyResponse.json();
+          if (lobbyData.status === 'success') {
+            setLobbyInfo(lobbyData.lobby);
+            console.log(`Non-host lobby refreshed (attempt ${attempts + 1}):`, lobbyData.lobby.players.length, 'players');
+          }
+          // Refresh again after a short delay to catch any players who left
+          if (attempts < 2) {
+            setTimeout(() => refreshLobby(attempts + 1), 1000);
+          }
+        } catch (error) {
+          console.error('Error refreshing lobby info:', error);
+        }
+      };
+      refreshLobby();
+    }
+  };
+
   // Poll lobby info every 2 seconds if in a lobby and game not started
   useEffect(() => {
     if (gameId && playerId && !gameStarted) {
@@ -119,6 +219,43 @@ export default function Home() {
     }
   }, [gameId, playerId, gameStarted]);
 
+  // Additional polling for players in game to detect lobby return
+  useEffect(() => {
+    if (gameId && playerId && gameStarted) {
+      const pollForLobbyReturn = async () => {
+        try {
+          const response = await fetch(`/api/lobby-info/${gameId}`);
+          const data = await response.json();
+          if (data.status === 'success' && !data.lobby.gameStarted) {
+            // Game has been returned to lobby
+            console.log('Detected lobby return via polling - returning to lobby');
+            setGameStarted(false);
+            setLobbyInfo(data.lobby);
+            // Trigger additional refresh to catch any players who left
+            setTimeout(async () => {
+              try {
+                const refreshResponse = await fetch(`/api/lobby-info/${gameId}`);
+                const refreshData = await refreshResponse.json();
+                if (refreshData.status === 'success') {
+                  setLobbyInfo(refreshData.lobby);
+                  console.log('Additional lobby refresh after return:', refreshData.lobby.players.length, 'players');
+                }
+              } catch (error) {
+                console.error('Error in additional lobby refresh:', error);
+              }
+            }, 2000);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      
+      // Poll every 3 seconds while in game to detect lobby return
+      const pollInterval = setInterval(pollForLobbyReturn, 3000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [gameId, playerId, gameStarted]);
+
   // Start game handler (host only)
   const handleStartGame = async () => {
     if (!gameId) return;
@@ -140,11 +277,14 @@ export default function Home() {
   // Show Game component if started
   if ((gameId && playerId) && gameStarted) {
     return (
-      <Game
-        gameId={gameId}
-        playerId={playerId}
-        onLeaveGame={handleLeaveGame}
-      />
+      <AuthWrapper gameId={gameId} playerId={playerId}>
+        <Game
+          gameId={gameId}
+          playerId={playerId}
+          onLeaveGame={handleLeaveGame}
+          onReturnToLobby={handleReturnToLobby}
+        />
+      </AuthWrapper>
     );
   }
 
@@ -152,17 +292,11 @@ export default function Home() {
   if ((gameId && playerId) && lobbyInfo) {
     const isHost = lobbyInfo.players[0]?.id === playerId;
     return (
-      <div className={styles.container}>
-        <div className={styles.headerControls}>
-          <div className={styles.headerLeft}>
-            <Logo size="small" />
-          </div>
-          <div className={styles.headerRight}>
-            <LanguageToggle />
-            <ThemeToggle />
-            <BugReportButton gameId={gameId} playerId={playerId} />
-          </div>
+      <AuthWrapper gameId={gameId} playerId={playerId}>
+        <div className={styles.headerLogo}>
+          <HeaderLogo />
         </div>
+        <div className={styles.container}>
         <Logo size="large" />
         <h2>{t('lobby', { id: gameId })}</h2>
         <div className={styles.section}>
@@ -187,29 +321,26 @@ export default function Home() {
           )}
         </div>
       </div>
+      </AuthWrapper>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.headerControls}>
-        <div className={styles.headerLeft}>
-          <Logo size="small" />
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageToggle />
-          <ThemeToggle />
-          <BugReportButton />
-        </div>
+    <AuthWrapper>
+      {showUsernameSetup && (
+        <UsernameSetup onUsernameSet={handleUsernameSet} />
+      )}
+      <div className={styles.headerLogo}>
+        <HeaderLogo />
       </div>
-      <Logo size="large" />
-      <div className={styles.titleSpacing}></div>
+      <div className={styles.container}>
       {error && (
         <div className={styles.error}>
           {error}
         </div>
       )}
       <div className={styles.section}>
+        <Logo size="large" />
         <h2>{t('join_or_create')}</h2>
         <div className={styles.inputGroup}>
           <input
@@ -385,5 +516,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </AuthWrapper>
   );
 } 

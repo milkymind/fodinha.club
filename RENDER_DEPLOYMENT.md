@@ -5,7 +5,7 @@ This is the fastest way to get your Fodinha Card Game running with a real backen
 ## Prerequisites
 
 ✅ Your code is already pushed to GitHub  
-✅ Frontend is deployed on Lovable  
+✅ Frontend is deployed on Render  
 ✅ All required files are in place (`render.yaml`, `pages/api/health.ts`)
 
 ## Step 1: Deploy Backend to Render (5 minutes)
@@ -41,7 +41,7 @@ This is the fastest way to get your Fodinha Card Game running with a real backen
    ```javascript
    // Find the CORS configuration and update it
    const allowedOrigins = [
-     'https://your-frontend-url.lovable.app', // Replace with your actual Lovable URL
+     'https://your-frontend-url.onrender.com', // Replace with your actual Render URL
      'http://localhost:3000'
    ];
    ```
@@ -53,11 +53,11 @@ This is the fastest way to get your Fodinha Card Game running with a real backen
    git push
    ```
 
-4. **Lovable will auto-deploy** your updated frontend
+4. **Render will auto-deploy** your updated frontend
 
 ## Step 3: Test (1 minute)
 
-1. **Visit your Lovable frontend URL**
+1. **Visit your Render frontend URL**
 2. **Should see "Connecting..." then no demo banner**
 3. **Create a game** - should work with real multiplayer!
 
@@ -79,7 +79,7 @@ This is the fastest way to get your Fodinha Card Game running with a real backen
 ## URLs to Remember
 
 - **Your Backend**: https://your-render-service.onrender.com
-- **Your Frontend**: https://your-frontend.lovable.app
+- **Your Frontend**: https://your-frontend.onrender.com
 - **Health Check**: https://your-render-service.onrender.com/api/health
 
 ## Cost

@@ -31,7 +31,7 @@ export default function BugReportModal({ isOpen, onClose, gameId, playerId }: Bu
         },
         body: JSON.stringify({
           description: bugDescription,
-          contactInfo,
+          contactInfo: contactInfo,
           gameId,
           playerId,
           timestamp: new Date().toISOString(),

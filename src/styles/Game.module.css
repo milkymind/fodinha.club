@@ -38,6 +38,9 @@
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
+  margin: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
 }
 
 .leaveButton:hover {
@@ -484,11 +487,18 @@
 }
 
 .gameOver {
-  background-color: rgba(0,0,0,0.8);
-  color: white;
-  padding: 2rem;
-  border-radius: 8px;
   text-align: center;
+  margin: 2rem 0;
+  padding: 2rem;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.gameOverButtons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
 }
 
 .finalResults {

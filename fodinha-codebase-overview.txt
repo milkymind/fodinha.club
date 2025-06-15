@@ -138,4 +138,4 @@ The application uses environment-aware storage:
 - Development: File-based storage (db.json)
 - Production: In-memory storage with optimized caching
 
-The project is designed to work with Vercel deployment but requires proper environment configuration. 
+The project is designed to work with Render deployment with persistent file-based storage. 

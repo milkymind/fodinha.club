@@ -11,6 +11,7 @@
  *   --max-age=<days>  Maximum age of lobbies in days (default: 7)
  *   --dry-run         Show what would be deleted without actually deleting
  *   --silent          Don't output any logs
+ *   --migrate         Add lastUpdated timestamps to lobbies that don't have them
  */
 
 const fs = require('fs');
@@ -21,6 +22,7 @@ const args = process.argv.slice(2);
 const maxAgeDays = parseInt(args.find(arg => arg.startsWith('--max-age='))?.split('=')[1] || '7', 10);
 const dryRun = args.includes('--dry-run');
 const silent = args.includes('--silent');
+const migrate = args.includes('--migrate');
 
 /**
  * Log a message unless in silent mode
@@ -45,7 +47,8 @@ async function purgeLobbies() {
       return {
         totalLobbies: 0,
         lobbiesPurged: 0,
-        lobbiesToPurge: []
+        lobbiesToPurge: [],
+        lobbiesMigrated: 0
       };
     }
     
@@ -70,11 +73,27 @@ async function purgeLobbies() {
     const now = new Date();
     const cutoffDate = new Date(now.getTime() - (maxAgeDays * 24 * 60 * 60 * 1000));
     
-    // Identify old lobbies to purge
+    // Identify old lobbies to purge and lobbies needing migration
     const lobbiesToPurge = [];
+    const lobbiesToMigrate = [];
+    let lobbiesMigrated = 0;
     
     for (const [gameId, lobby] of Object.entries(data.lobbies)) {
-      // Use the lastUpdated field if it exists, otherwise assume the lobby is old
+      // Check if lobby needs migration (no lastUpdated field)
+      if (!lobby.lastUpdated) {
+        lobbiesToMigrate.push(gameId);
+        
+        if (migrate || !dryRun) {
+          // For lobbies without lastUpdated, we'll assume they're old
+          // But we'll give them a timestamp from 8 days ago so they get purged
+          // unless they're actively being used (in which case they'll get updated)
+          const oldTimestamp = new Date(now.getTime() - (8 * 24 * 60 * 60 * 1000));
+          lobby.lastUpdated = oldTimestamp.toISOString();
+          lobbiesMigrated++;
+        }
+      }
+      
+      // Use the lastUpdated field (now that we've potentially added it)
       const lastUpdated = lobby.lastUpdated ? new Date(lobby.lastUpdated) : null;
       
       if (!lastUpdated || lastUpdated < cutoffDate) {
@@ -90,8 +109,10 @@ async function purgeLobbies() {
         delete data.lobbies[gameId];
         lobbiesPurged++;
       }
-      
-      // Write the updated data back to the file (safely)
+    }
+    
+    // Write the updated data back to the file if we made changes
+    if (!dryRun && (lobbiesPurged > 0 || lobbiesMigrated > 0)) {
       const tmpPath = `${dbPath}.tmp`;
       fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
       
@@ -107,7 +128,9 @@ async function purgeLobbies() {
     return {
       totalLobbies: Object.keys(data.lobbies).length + (dryRun ? 0 : lobbiesPurged),
       lobbiesPurged,
-      lobbiesToPurge
+      lobbiesToPurge,
+      lobbiesMigrated,
+      lobbiesToMigrate
     };
   } catch (err) {
     throw new Error(`Failed to purge lobbies: ${err.message}`);
@@ -118,6 +141,15 @@ async function purgeLobbies() {
 purgeLobbies()
   .then((result) => {
     log(`Total lobbies: ${result.totalLobbies}`);
+    
+    if (result.lobbiesToMigrate.length > 0) {
+      if (dryRun) {
+        log(`Would migrate ${result.lobbiesToMigrate.length} lobbies (add lastUpdated timestamps)`);
+      } else {
+        log(`Migrated ${result.lobbiesMigrated} lobbies (added lastUpdated timestamps)`);
+      }
+    }
+    
     if (dryRun) {
       log(`Would purge ${result.lobbiesToPurge.length} lobbies (dry run)`);
       if (result.lobbiesToPurge.length > 0) {
