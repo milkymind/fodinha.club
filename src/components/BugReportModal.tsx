@@ -24,7 +24,7 @@ export default function BugReportModal({ isOpen, onClose, gameId, playerId }: Bu
     
     // Here you would typically send the bug report to your backend
     try {
-      const response = await fetch('/api/report-bug', {
+      const response = await fetch('/api/bug-report', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1687,6 +1687,26 @@
       },
       "lastUpdated": "2025-06-15T01:18:35.221Z",
       "cachedAt": 1749950314222
+    },
+    "2RI1": {
+      "gameId": "2RI1",
+      "players": [
+        {
+          "id": 1,
+          "name": "Guest"
+        },
+        {
+          "id": 2,
+          "name": "milky"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-15T02:08:41.813Z",
+      "cachedAt": 1749953318740
     }
   }
 }

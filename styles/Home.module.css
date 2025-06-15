@@ -26,6 +26,14 @@
   pointer-events: none;
 }
 
+.headerLogo {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 .headerControls {
   display: flex;
   justify-content: flex-start;
@@ -56,6 +64,11 @@
 /* Responsive header adjustments */
 @media (max-width: 768px) {
   .topLeftLogo {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+  
+  .headerLogo {
     top: 0.5rem;
     left: 0.5rem;
   }
