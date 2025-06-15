@@ -4,9 +4,13 @@ import Game from '../src/components/Game';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageToggle from '../src/components/LanguageToggle';
 import BugReportButton from '../src/components/BugReportButton';
+import { useGuest } from '../contexts/GuestContext';
+import AuthWrapper from '../components/AuthWrapper';
+import UsernameSetup from '../components/UsernameSetup';
 import Logo from '../components/Logo';
 import HeaderLogo from '../components/HeaderLogo';
 import ThemeToggle from '../components/ThemeToggle';
+import { useUser } from '@clerk/nextjs';
 
 interface LobbyInfo {
   players: { id: number; name: string }[];
@@ -17,6 +21,8 @@ interface LobbyInfo {
 
 export default function Home() {
   const { t } = useLanguage();
+  const { user, isLoaded } = useUser();
+  const { isGuest, guestName } = useGuest();
   const [gameId, setGameId] = useState<string>('');
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
@@ -27,6 +33,29 @@ export default function Home() {
   const [lobbyInfo, setLobbyInfo] = useState<LobbyInfo | null>(null);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [showUsernameSetup, setShowUsernameSetup] = useState<boolean>(false);
+
+  // Set default player name from user when loaded or from guest name
+  useEffect(() => {
+    if (isGuest && !playerName) {
+      setPlayerName(guestName);
+    } else if (isLoaded && user && !isGuest) {
+      const defaultName = user.firstName || user.username || 'Player';
+      setPlayerName(defaultName);
+    }
+  }, [isLoaded, user, playerName, isGuest, guestName]);
+
+  // Update player name when transitioning from guest to authenticated
+  useEffect(() => {
+    if (isLoaded && user && !isGuest && playerName === guestName) {
+      const defaultName = user.firstName || user.username || 'Player';
+      setPlayerName(defaultName);
+    }
+  }, [isLoaded, user, isGuest, playerName, guestName]);
+
+  const handleUsernameSet = (username: string) => {
+    setShowUsernameSetup(false);
+  };
 
   const createGame = async () => {
     try {
@@ -217,12 +246,14 @@ export default function Home() {
   // Show Game component if started
   if ((gameId && playerId) && gameStarted) {
     return (
-      <Game
-        gameId={gameId}
-        playerId={playerId}
-        onLeaveGame={handleLeaveGame}
-        onReturnToLobby={handleReturnToLobby}
-      />
+      <AuthWrapper gameId={gameId} playerId={playerId}>
+        <Game
+          gameId={gameId}
+          playerId={playerId}
+          onLeaveGame={handleLeaveGame}
+          onReturnToLobby={handleReturnToLobby}
+        />
+      </AuthWrapper>
     );
   }
 
@@ -230,7 +261,8 @@ export default function Home() {
   if ((gameId && playerId) && lobbyInfo) {
     const isHost = lobbyInfo.players[0]?.id === playerId;
     return (
-      <div className={styles.container}>
+      <AuthWrapper gameId={gameId} playerId={playerId}>
+        <div className={styles.container}>
         <div className={styles.headerControls}>
           <div className={styles.headerLeft}>
             <HeaderLogo />
@@ -265,11 +297,16 @@ export default function Home() {
           )}
         </div>
       </div>
+      </AuthWrapper>
     );
   }
 
   return (
-    <div className={styles.container}>
+    <AuthWrapper>
+      {showUsernameSetup && (
+        <UsernameSetup onUsernameSet={handleUsernameSet} />
+      )}
+      <div className={styles.container}>
       <div className={styles.headerControls}>
         <div className={styles.headerLeft}>
           <HeaderLogo />
@@ -463,5 +500,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </AuthWrapper>
   );
 } 
