@@ -3523,65 +3523,6 @@
       "maxPlayers": 10,
       "lives": 3,
       "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T21:34:00.726Z",
-      "cachedAt": 1750023238812
-    },
-    "0QPO": {
-      "gameId": "0QPO",
-      "players": [
-        {
-          "id": 1,
-          "name": "1"
-        },
-        {
-          "id": 2,
-          "name": "2"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T22:39:40.361Z",
-      "cachedAt": 1750027180313
-    },
-    "JIK7": {
-      "gameId": "JIK7",
-      "players": [
-        {
-          "id": 1,
-          "name": "1"
-        },
-        {
-          "id": 2,
-          "name": "2"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T22:48:37.831Z"
-    },
-    "DK9X": {
-      "gameId": "DK9X",
-      "players": [
-        {
-          "id": 1,
-          "name": "1"
-        },
-        {
-          "id": 2,
-          "name": "2"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
       "gameStarted": true,
       "gameState": {
         "players": [
@@ -3594,161 +3535,46 @@
         },
         "vidas": {
           "1": 3,
-          "2": 3
+          "2": 2
         },
         "estado": "apostas",
-        "carta_meio": "2♥",
-        "manilha": "3",
+        "carta_meio": "K♠",
+        "manilha": "A",
         "maos": {
           "1": [
-            "6♣"
+            "3♣",
+            "A♥"
           ],
           "2": [
-            "A♣"
+            "5♦",
+            "5♣"
           ]
         },
         "original_maos": {
-          "1": [
-            "6♣"
-          ],
-          "2": [
-            "A♣"
-          ]
+          "1": [],
+          "2": []
         },
-        "palpites": {},
+        "palpites": {
+          "1": 1
+        },
         "initial_lives": 3,
         "current_round": 1,
-        "current_hand": 0,
-        "current_player_idx": 0,
+        "current_hand": 1,
+        "current_player_idx": 1,
         "ordem_jogada": [
-          2,
-          1
-        ],
-        "multiplicador": 1,
-        "soma_palpites": 0,
-        "mesa": [],
-        "vitorias": {
-          "1": 0,
-          "2": 0
-        },
-        "dealer": 1,
-        "first_player": 2,
-        "cartas": 1,
-        "eliminados": [],
-        "direction": "up",
-        "startFrom": "one",
-        "maxCardsPerPlayer": 20,
-        "tie_in_previous_round": false,
-        "tie_resolved_by_tiebreaker": false,
-        "cancelled_cards": [],
-        "last_activity": {
-          "1": 1750028043509,
-          "2": 1750028038502
-        },
-        "middle_card_workaround": {
-          "used": false
-        }
-      },
-      "lastUpdated": "2025-06-15T22:54:03.509Z",
-      "cachedAt": 1750028038650
-    },
-    "GFYF": {
-      "gameId": "GFYF",
-      "players": [
-        {
-          "id": 1,
-          "name": "1"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T22:59:56.639Z"
-    },
-    "EMNH": {
-      "gameId": "EMNH",
-      "players": [
-        {
-          "id": 1,
-          "name": "a"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T23:08:40.461Z"
-    },
-    "ZIXN": {
-      "gameId": "ZIXN",
-      "players": [
-        {
-          "id": 1,
-          "name": "guest"
-        },
-        {
-          "id": 2,
-          "name": "guest 2"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": true,
-      "gameState": {
-        "players": [
           1,
           2
         ],
-        "player_names": {
-          "1": "guest",
-          "2": "guest 2"
-        },
-        "vidas": {
-          "1": 3,
-          "2": 3
-        },
-        "estado": "apostas",
-        "carta_meio": "J♠",
-        "manilha": "K",
-        "maos": {
-          "1": [
-            "A♦"
-          ],
-          "2": [
-            "6♦"
-          ]
-        },
-        "original_maos": {
-          "1": [
-            "A♦"
-          ],
-          "2": [
-            "6♦"
-          ]
-        },
-        "palpites": {},
-        "initial_lives": 3,
-        "current_round": 1,
-        "current_hand": 0,
-        "current_player_idx": 0,
-        "ordem_jogada": [
-          2,
-          1
-        ],
         "multiplicador": 1,
-        "soma_palpites": 0,
+        "soma_palpites": 1,
         "mesa": [],
         "vitorias": {
           "1": 0,
           "2": 0
         },
-        "dealer": 1,
-        "first_player": 2,
-        "cartas": 1,
+        "dealer": 2,
+        "first_player": 1,
+        "cartas": 2,
         "eliminados": [],
         "direction": "up",
         "startFrom": "one",
@@ -3757,53 +3583,19 @@
         "tie_resolved_by_tiebreaker": false,
         "cancelled_cards": [],
         "last_activity": {
-          "1": 1750030683832,
-          "2": 1750030025776
+          "1": 1750016998742,
+          "2": 1750016995122
         },
         "middle_card_workaround": {
           "used": false
         },
-        "inactive_players": [
-          2
-        ]
+        "cards_played_this_round": 0,
+        "last_round_winner": 2,
+        "last_trick_winner": 2,
+        "inactive_players": []
       },
-      "lastUpdated": "2025-06-15T23:38:03.832Z",
-      "cachedAt": 1750030678823
-    },
-    "QK9O": {
-      "gameId": "QK9O",
-      "players": [
-        {
-          "id": 1,
-          "name": "guest"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T23:30:48.049Z"
-    },
-    "7D3Z": {
-      "gameId": "7D3Z",
-      "players": [
-        {
-          "id": 1,
-          "name": "Matheus"
-        },
-        {
-          "id": 2,
-          "name": "Thomas Rocandelli"
-        }
-      ],
-      "maxPlayers": 10,
-      "lives": 3,
-      "startFrom": "one",
-      "gameStarted": false,
-      "gameState": null,
-      "lastUpdated": "2025-06-15T23:55:52.541Z",
-      "cachedAt": 1750031752453
+      "lastUpdated": "2025-06-15T19:49:58.742Z",
+      "cachedAt": 1750016995122
     }
   }
 }

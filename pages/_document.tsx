@@ -1,11 +1,13 @@
 import { Html, Head, Main, NextScript } from 'next/document'
 
 export default function Document() {
+  // Determine title based on environment
+  const title = process.env.NODE_ENV === 'development' ? 'FODINHA.CLUB LOCAL' : 'FODINHA.CLUB';
+  
   return (
     <Html lang="en">
       <Head>
-        {/* Default title */}
-        <title>FODINHA.CLUB</title>
+        <title>{title}</title>
         
         {/* Modern SVG favicon (preferred) */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -34,7 +36,7 @@ export default function Document() {
         <meta name="author" content="Fodinha.Club" />
         
         {/* Open Graph meta tags for social sharing */}
-        <meta property="og:title" content="Fodinha.Club" />
+        <meta property="og:title" content={title} />
         <meta property="og:description" content="Play Fodinha online, and join the club!" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="/android-chrome-512x512.png" />
@@ -43,7 +45,7 @@ export default function Document() {
         
         {/* Twitter Card meta tags */}
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Fodinha.Club" />
+        <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content="Play Fodinha online, and join the club!" />
         <meta name="twitter:image" content="/android-chrome-512x512.png" />
       </Head>

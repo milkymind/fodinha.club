@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import Game from '../src/components/Game';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -35,20 +36,14 @@ export default function Home() {
 
   // Set default player name from user when loaded or from guest name
   useEffect(() => {
-    if (isGuest && !playerName) {
-      setPlayerName(guestName);
-    } else if (isLoaded && user && !isGuest) {
-      const defaultName = user.firstName || user.username || 'Player';
-      setPlayerName(defaultName);
-    }
+    // Leave name field empty for customization - removed automatic defaults
+    // Users can enter their own preferred names
   }, [isLoaded, user, playerName, isGuest, guestName]);
 
   // Update player name when transitioning from guest to authenticated
   useEffect(() => {
-    if (isLoaded && user && !isGuest && playerName === guestName) {
-      const defaultName = user.firstName || user.username || 'Player';
-      setPlayerName(defaultName);
-    }
+    // Leave name field empty for customization - removed automatic defaults
+    // Users can enter their own preferred names
   }, [isLoaded, user, isGuest, playerName, guestName]);
 
   const handleUsernameSet = (username: string) => {
@@ -278,6 +273,9 @@ export default function Home() {
   if ((gameId && playerId) && gameStarted) {
     return (
       <AuthWrapper gameId={gameId} playerId={playerId}>
+        <Head>
+          <title>{process.env.NODE_ENV === 'development' ? 'FODINHA.CLUB LOCAL' : 'FODINHA.CLUB'}</title>
+        </Head>
         <Game
           gameId={gameId}
           playerId={playerId}
@@ -293,29 +291,31 @@ export default function Home() {
     const isHost = lobbyInfo.players[0]?.id === playerId;
     return (
       <AuthWrapper gameId={gameId} playerId={playerId}>
-        <div className={styles.headerLogo}>
-          <HeaderLogo />
-        </div>
+        <Head>
+          <title>{process.env.NODE_ENV === 'development' ? 'FODINHA.CLUB LOCAL' : 'FODINHA.CLUB'}</title>
+        </Head>
+
         <div className={styles.container}>
-        <Logo size="large" />
         <h2>{t('lobby', { id: gameId })}</h2>
         <div className={styles.section}>
           <h3>{t('players_count', { current: lobbyInfo.players.length, max: lobbyInfo.maxPlayers })}</h3>
           <ul style={{ listStyle: 'none', padding: 0 }}>
             {lobbyInfo.players.map((p) => (
               <li key={p.id} style={{ fontWeight: p.id === playerId ? 'bold' : 'normal' }}>
-                {p.name} {p.id === playerId ? t('you') : ''}
+                {p.name}
               </li>
             ))}
           </ul>
-          <p>{t('lives_per_player', { lives: lobbyInfo.lives })}</p>
-          <p>{t('share_lobby_code', { code: gameId })}</p>
-          {isHost && (
-            <button className={styles.button} onClick={handleStartGame} disabled={lobbyInfo.players.length < 2}>
-              {t('start_game')}
-            </button>
-          )}
-          <button className={styles.button} onClick={handleLeaveGame}>{t('leave_lobby')}</button>
+          <p className={styles.lobbyInfo}>{t('lives')}: <b>{lobbyInfo.lives}</b></p>
+          <p className={styles.lobbyInfo}>{t('start_game_from')}: <b>{lobbyInfo.startFrom === 'max' ? t('max_cards') : t('one_card')}</b></p>
+          <div className={styles.lobbyButtons}>
+            <button className={styles.secondaryButton} onClick={handleLeaveGame}>{t('leave_lobby')}</button>
+            {isHost && (
+              <button className={styles.button} onClick={handleStartGame} disabled={lobbyInfo.players.length < 2}>
+                {t('start_game')}
+              </button>
+            )}
+          </div>
           {isHost && lobbyInfo.players.length < 2 && (
             <p style={{ color: 'red', marginTop: 8 }}>{t('min_players_required')}</p>
           )}
@@ -327,20 +327,35 @@ export default function Home() {
 
   return (
     <AuthWrapper>
+      <Head>
+        <title>{process.env.NODE_ENV === 'development' ? 'FODINHA.CLUB LOCAL' : 'FODINHA.CLUB'}</title>
+      </Head>
       {showUsernameSetup && (
         <UsernameSetup onUsernameSet={handleUsernameSet} />
       )}
-      <div className={styles.headerLogo}>
-        <HeaderLogo />
-      </div>
+
       <div className={styles.container}>
       {error && (
         <div className={styles.error}>
           {error}
         </div>
       )}
+      
+      {/* Home Banner Image */}
+      <div className={styles.section} style={{ padding: 0, backgroundColor: 'transparent' }}>
+        <img 
+          src="/home-banner.jpeg" 
+          alt="Fodinha Game Banner" 
+          style={{
+            width: '100%',
+            height: 'auto',
+            borderRadius: '6px',
+            display: 'block'
+          }}
+        />
+      </div>
+      
       <div className={styles.section}>
-        <Logo size="large" />
         <h2>{t('join_or_create')}</h2>
         <div className={styles.inputGroup}>
           <input
@@ -399,12 +414,12 @@ export default function Home() {
             className={styles.button}
             disabled={!playerName}
           >
-            {t('create_new_game')}
+                            {t('create_new_lobby')}
           </button>
         </div>
         
         <div className={styles.joinSection}>
-          <h3>{t('join_existing_game')}</h3>
+          <h3>{t('join_existing_lobby')}</h3>
           <div className={styles.inputGroup}>
             <input
               type="text"
@@ -418,7 +433,7 @@ export default function Home() {
               className={styles.button}
               disabled={!joinGameId || !playerName}
             >
-              {t('join_game')}
+                              {t('join_lobby')}
             </button>
           </div>
         </div>

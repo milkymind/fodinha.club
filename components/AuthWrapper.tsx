@@ -3,6 +3,7 @@ import { ReactNode } from 'react'
 import CustomUserMenu from './CustomUserMenu'
 import { useGuest } from '../contexts/GuestContext'
 import Logo from './Logo'
+import PersistentHeader from './PersistentHeader'
 import styles from '../styles/Home.module.css'
 
 interface AuthWrapperProps {
@@ -14,14 +15,14 @@ interface AuthWrapperProps {
 export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperProps) {
   const { isGuest, setIsGuest } = useGuest()
 
-  // If user is in guest mode, show the app with guest menu
+  // If user is in guest mode, show the app with persistent header
   if (isGuest) {
     return (
       <>
-        <div className={styles.userMenuContainer}>
-          <CustomUserMenu gameId={gameId} playerId={playerId} isGuest={true} hideOnScroll={true} />
+        <PersistentHeader gameId={gameId} playerId={playerId} />
+        <div style={{ paddingTop: '50px' }}>
+          {children}
         </div>
-        {children}
       </>
     )
   }
@@ -107,10 +108,10 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
 
       {/* Show this when user IS signed in */}
       <SignedIn>
-        <div className={styles.userMenuContainer}>
-          <CustomUserMenu gameId={gameId} playerId={playerId} isGuest={false} hideOnScroll={true} />
+        <PersistentHeader gameId={gameId} playerId={playerId} />
+        <div style={{ paddingTop: '50px' }}>
+          {children}
         </div>
-        {children}
       </SignedIn>
     </>
   )

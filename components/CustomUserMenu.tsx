@@ -79,7 +79,7 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false, hide
 
   return (
     <>
-      <div style={{ position: 'relative' }} className={hiddenClass}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className={hiddenClass}>
         {/* Profile Picture Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -88,11 +88,15 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false, hide
             border: '2px solid #333',
             borderRadius: '50%',
             padding: '0',
+            margin: '0',
             cursor: 'pointer',
             width: '40px',
             height: '40px',
             transition: 'border-color 0.2s, transform 0.2s',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = '#4f46e5'
