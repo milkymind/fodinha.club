@@ -12,7 +12,7 @@
     "purge-lobbies:test": "node scripts/purge-lobbies.js --dry-run --max-age=0.125",
     "setup-discord": "node scripts/setup-discord-webhook.js",
     "build": "next build",
-    "start": "node scripts/ensure-db.js && node scripts/purge-lobbies.js && next start",
+    "start": "node scripts/ensure-db.js && node scripts/purge-lobbies.js --max-age=1 && next start",
     "start:no-purge": "node scripts/ensure-db.js && next start",
     "test": "jest",
     "test:watch": "jest --watch",
