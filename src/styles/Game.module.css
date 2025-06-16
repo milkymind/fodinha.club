@@ -1,14 +1,27 @@
 .gameContainer {
-  max-width: 800px;
+  max-width: 600px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0.9375rem;
+  padding-top: calc(0px);
+}
+
+@media (max-width: 768px) {
+  .gameContainer {
+    padding-top: calc(0px);
+  }
+}
+
+@media (max-width: 480px) {
+  .gameContainer {
+    padding-top: calc(0px);
+  }
 }
 
 .headerControls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   position: relative;
   width: 100%;
 }
@@ -21,25 +34,31 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.header h2 {
+  font-size: 0.75rem;
+  margin: 0;
 }
 
 .leaveButton {
   background-color: #dc3545;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.28125rem 0.28125rem;
+  border-radius: 2.25px;
   cursor: pointer;
-  margin: 0.5rem;
+  margin: 0.28125rem;
   font-weight: 500;
+  font-size: 0.75rem;
   transition: background-color 0.2s ease;
 }
 
@@ -49,7 +68,7 @@
 
 .gameInfo {
   display: flex;
-  gap: 2rem;
+  gap: 0.703125rem;
   align-items: center;
   margin: 0;
   padding: 0;
@@ -60,22 +79,24 @@
   font-weight: bold;
   color: var(--primary-color);
   margin: 0;
+  font-size: 0.75rem;
 }
 
 .roundInfo {
   font-weight: bold;
   color: var(--primary-color);
   margin: 0;
+  font-size: 0.75rem;
 }
 
 .actionButton {
   background-color: var(--primary-color);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.375rem 0.75rem;
+  border-radius: 3px;
   cursor: pointer;
-  margin: 0.5rem;
+  margin: 0.375rem;
   font-weight: 500;
   transition: background-color 0.2s ease;
 }
@@ -85,42 +106,43 @@
 }
 
 .tableInfo {
-  background-color: #3a7e4f;
-  padding: 1rem;
-  border-radius: 8px;
-  margin: 2rem 0;
+  background-color: #3a7e4f00;
+  padding: 0rem;
+  border-radius: 6px;
+  margin: 0rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
 .handContainer {
-  margin: 2rem 0;
+  margin: 0rem 0;
 }
 
 .handHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0rem;
 }
 
 .handHeader h3 {
   margin: 0;
   color: var(--text-primary);
+  font-size: 0.75rem;
 }
 
 .filterButton {
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.5rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0rem;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 0.75rem;
   transition: all 0.2s ease;
   color: var(--text-primary);
-  min-width: 40px;
-  height: 40px;
+  min-width: 30px;
+  height: 22.5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,41 +166,41 @@
 
 .cards {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .card {
-  width: 80px;
-  height: 120px;
-  border: 2px solid #333;
-  border-radius: 8px;
+  width: 60px;
+  height: 90px;
+  border: 1.5px solid #333;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   background-color: white;
   cursor: pointer;
   transition: transform 0.3s, box-shadow 0.3s;
   position: relative;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 1.5px 3px rgba(0,0,0,0.2);
   overflow: hidden;
 }
 
 .card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  transform: translateY(-7.5px);
+  box-shadow: 0 3.75px 11.25px rgba(0,0,0,0.3);
 }
 
 .playable:hover {
-  transform: translateY(-15px) rotate(5deg);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  transform: translateY(-11.25px) rotate(5deg);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.4);
 }
 
 .hiddenCard {
   background: linear-gradient(135deg, #4c8daa 25%, #336699 25%, #336699 50%, #4c8daa 50%, #4c8daa 75%, #336699 75%);
-  background-size: 20px 20px;
+  background-size: 15px 15px;
   cursor: pointer;
 }
 
@@ -189,39 +211,52 @@
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: bold;
-  text-shadow: 0 0 5px rgba(0,0,0,0.5);
+  text-shadow: 0 0 3.75px rgba(0,0,0,0.5);
 }
 
 .cardHint {
   text-align: center;
   font-style: italic;
   color: #666;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 }
 
 .betContainer {
-  margin: 2rem 0;
+  margin: -0.5rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0rem;
   justify-content: center;
   align-items: center;
 }
 
+.betContainer h3 {
+  font-size: 0.75rem;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.betHint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0.5rem 0rem 0.5rem 0;
+  text-align: center;
+}
+
 .betControls {
   display: flex;
-  gap: 1rem;
+  gap: 0rem;
   align-items: center;
 }
 
 .betInput {
-  padding: 0.5rem;
-  font-size: 1rem;
-  width: 80px;
+  padding: 0.2625rem;
+  font-size: 0.75rem;
+  width: 37.5px;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: 3px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -229,54 +264,47 @@
 .betInput:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(255, 132, 0, 0.2);
-}
-
-.betsInfo {
-  background-color: var(--bg-secondary);
-  padding: 1rem;
-  border-radius: 8px;
-  margin: 2rem 0;
-  color: var(--text-primary);
+  box-shadow: 0 0 0 1.5px rgba(255, 132, 0, 0.2);
 }
 
 .playersList {
-  margin: 2rem 0;
+  margin: 0rem 0;
   background-color: var(--bg-secondary);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 6px;
+  padding: 0.75rem;
 }
 
 .playersList h3 {
   margin-top: 0;
   color: var(--text-primary);
+  font-size: 0.75rem;
 }
 
 .playersGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 0.5625rem;
 }
 
 .playerCard {
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.75rem;
+  border-radius: 6px;
+  padding: 0.5625rem;
   transition: transform 0.2s, box-shadow 0.2s;
   color: var(--text-primary);
 }
 
 .playerCard.currentPlayer {
   border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  box-shadow: 0 0 0 0.75px rgba(0, 123, 255, 0.25);
 }
 
 .playerCard.activePlayer {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  transform: translateY(-3.75px);
+  box-shadow: 0 3.75px 11.25px rgba(0,0,0,0.1);
   border-color: #28a745;
-  border-width: 2px;
+  border-width: 1px;
 }
 
 .playerCard.inactivePlayer {
@@ -286,30 +314,27 @@
 }
 
 .playerCard.waitingPlayer {
-  border-color: var(--primary-color);
-  border-width: 2px;
-}
-
-.playerCard.lastWinner {
-  border-color: #ffc107;
-  box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+  border-color: #ff8400;
+  border-width: 1px;
+  box-shadow: 0 0 0 0.75px rgba(255, 132, 0, 0.25);
 }
 
 .playerName {
   font-weight: bold;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0rem;
+  font-size: 0.75rem;
 }
 
 .dealerLabel {
-  font-size: 1.2em;
+  font-size: 0.75em;
   color: #6c757d;
 }
 
 .playerStats {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  gap: 0rem;
+  font-size: 0.675rem;
 }
 
 /* Card styling */
@@ -318,20 +343,20 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  padding: 5px;
+  padding: 3.75px;
   box-sizing: border-box;
 }
 
 .cardValue {
   position: absolute;
-  left: 5px;
-  top: 5px;
-  font-size: 1.2rem;
+  left: 3.75px;
+  top: 3.75px;
+  font-size: 0.9rem;
   font-weight: bold;
 }
 
 .cardSuit {
-  font-size: 2.5rem;
+  font-size: 1.875rem;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -351,93 +376,100 @@
 /* Game table */
 .gameTable {
   background-color: #3a7e4f;
-  border-radius: 20px;
-  padding: 2rem;
-  margin: 2rem 0;
-  min-height: 300px;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  min-height: 225px;
   position: relative;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.3);
 }
 
 .centerCardContainer {
   position: relative;
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0rem;
 }
 
 .cardLabel {
   color: white;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  margin-top: 0.375rem;
+  font-size: 0.675rem;
+  text-shadow: 0 0.75px 1.5px rgba(0,0,0,0.5);
 }
 
 .manilhaContainer {
   background-color: rgba(255,255,255,0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  margin-top: 1rem;
+  padding: 0.375rem 0.375rem;
+  border-radius: 6px;
+  margin-top: 0.375rem;
 }
 
 .manilhaInfo {
   color: #000;
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   text-shadow: none;
 }
 
 .manilhaValue {
   background-color: rgba(255,255,255,0.9);
-  color: #333;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  margin-left: 0.5rem;
+  color: #000000;
+  padding: 0.3rem 0.6rem;
+  border-radius: 3px;
+  margin-left: 0rem;
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: 0.825rem;
 }
 
 .workaroundInfo {
   background-color: rgba(255, 193, 7, 0.9);
   color: #333;
-  padding: 0.5rem;
-  border-radius: 4px;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
+  padding: 0.375rem;
+  border-radius: 3px;
+  margin-top: 0.375rem;
+  font-size: 0.675rem;
   font-weight: bold;
   text-align: center;
 }
 
 .workaroundInfo p {
-  margin: 0.2rem 0;
+  margin: 0.15rem 0;
 }
 
 .playedCards {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
 .playedCards h3 {
   color: white;
   text-align: center;
-  margin-bottom: 1rem;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0.75px 1.5px rgba(0,0,0,0.5);
+  font-size: 0.75rem;
 }
 
 .tableCards {
   display: flex;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 
 .playedCardContainer {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .playerLabel {
   color: white;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  font-size: 0.675rem;
+  margin-top: 0.375rem;
+  text-shadow: 0 0.75px 1.5px rgba(0,0,0,0.5);
+  text-align: center;
+  width: 100%;
 }
 
 .lastPlayed {
@@ -446,7 +478,7 @@
 
 @keyframes dealCard {
   0% {
-    transform: translateY(-100px) rotate(-10deg);
+    transform: translateY(-75px) rotate(-10deg);
     opacity: 0;
   }
   100% {
@@ -455,75 +487,44 @@
   }
 }
 
-.betsList {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.betItem {
-  background-color: white;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.betPlayer {
-  font-weight: bold;
-}
-
-.betValue {
-  background-color: #e9ecef;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-}
-
 .gameOver {
+  background-color: rgba(0,0,0,0.8);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 6px;
   text-align: center;
-  margin: 2rem 0;
-  padding: 2rem;
-  background-color: var(--bg-secondary);
-  border-radius: 8px;
 }
 
 .gameOverButtons {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   justify-content: center;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
 .finalResults {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin: 1.5rem 0;
+  gap: 0.75rem;
+  margin: 1.125rem 0;
 }
 
 .resultRow {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.375rem 0.75rem;
+  border-radius: 3px;
   background-color: rgba(255,255,255,0.1);
 }
 
 .resultRow.winner {
   background-color: rgba(40,167,69,0.3);
-  border-left: 4px solid #28a745;
+  border-left: 3px solid #28a745;
 }
 
 .resultRow.eliminated {
   background-color: rgba(220,53,69,0.3);
-  border-left: 4px solid #dc3545;
+  border-left: 3px solid #dc3545;
 }
 
 .resultName {
@@ -533,31 +534,31 @@
 .gameStatus {
   background-color: #007bff;
   color: white;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
   text-align: center;
   font-weight: bold;
   animation: fadeInOut 1s ease-in-out;
 }
 
 .waitingMsg {
-  background-color: #e7f1ff;
-  color: #0c5460;
-  border-left: 4px solid #007bff;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background-color: #6c757d;
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
   text-align: center;
-  font-weight: bold;
+  font-style: italic;
+  font-size: 0.675rem;
 }
 
 .winnerMessage {
   background-color: #28a745;
   color: white;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
   text-align: center;
   font-weight: bold;
   animation: fadeInOut 1s ease-in-out;
@@ -566,13 +567,13 @@
 .roundEndMessage {
   background-color: #ffc107;
   color: #212529;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
   text-align: center;
   font-weight: bold;
   animation: fadeInOut 1s ease-in-out;
-  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.5);
+  box-shadow: 0 1.5px 7.5px rgba(255, 193, 7, 0.5);
 }
 
 /* REMOVED CONNECTION ERROR STYLES - see CONNECTION_ERROR_BACKUP.md for reference */
@@ -584,13 +585,13 @@
 }
 
 .multiplier {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: #ffc107;
+  color: #212529;
   font-weight: bold;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.140625rem 0.28125rem;
+  border-radius: 2.25px;
   display: inline-block;
-  margin: 0;
+  font-size: 0.75rem;
 }
 
 .heartSuit, .diamondSuit {
@@ -602,57 +603,61 @@
 }
 
 .playerLives {
-  font-size: 1.2rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  margin-bottom: 0rem;
 }
 
 .eliminatedText {
   color: #dc3545;
   font-weight: bold;
   font-style: italic;
-  margin-left: 5px;
+  margin-left: 0px;
 }
 
 .playerBet, .playerWins {
-  margin-bottom: 0.3rem;
-  font-size: 0.9rem;
+  margin-bottom: 0rem;
+  font-size: 0.675rem;
+}
+
+.playerBetWins {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0rem;
+  font-size: 0.675rem;
+  gap: 1rem;
+}
+
+.betText, .winsText {
+  font-size: 0.675rem;
+  color: var(--text-secondary);
+}
+
+.betText {
+  color: var(--text-secondary);
 }
 
 .playerNeeds {
-  margin-bottom: 0.3rem;
-  margin-top: 0.5rem;
-  text-align: center;
-  background-color: var(--bg-accent);
-  border-radius: 6px;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 1px 3px var(--shadow);
+  display: flex;
+  align-items: center;
+  margin-bottom: 0rem;
+  font-size: 0.675rem;
+  margin-top: 0rem;
 }
 
-.needsLabel {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.2rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.needsValue {
-  font-size: 1.6rem;
+.needsText {
+  font-size: 0.65rem;
+  color: #ff6600;
   font-weight: bold;
-  color: var(--primary-color);
-  line-height: 1;
 }
 
 .waitingLabel {
-  font-size: 0.8rem;
+  font-size: 0.6rem;
   color: #6c757d;
   font-style: italic;
 }
 
 .inactiveLabel {
-  font-size: 0.8rem;
+  font-size: 0.6rem;
   color: #dc3545;
   font-style: italic;
 }
@@ -662,81 +667,81 @@
 .turnNotification {
   background-color: #4CAF50 !important; /* Green */
   color: white !important;
-  border-radius: 5px;
+  border-radius: 3.75px;
   font-weight: bold;
-  padding: 10px 20px;
-  margin: 10px 0;
+  padding: 7.5px 15px;
+  margin: 0;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
 }
 
 .waitingNotification {
   background-color: #F44336 !important; /* Red */
   color: white !important;
-  border-radius: 5px;
-  padding: 10px 20px;
-  margin: 10px 0;
+  border-radius: 3.75px;
+  padding: 7.5px 15px;
+  margin: 0;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
 }
 
 .gameStateNotification {
   background-color: #FFC107 !important; /* Yellow */
   color: #333 !important;
-  border-radius: 5px;
-  padding: 10px 20px;
-  margin: 10px 0;
+  border-radius: 3.75px;
+  padding: 7.5px 15px;
+  margin: 0;
   text-align: center;
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
 }
 
 .errorMessage {
   background-color: #dc3545;
   color: white;
-  padding: 0.75rem;
-  border-radius: 5px;
-  margin-top: 0.5rem;
+  padding: 0.5625rem;
+  border-radius: 3.75px;
+  margin-top: 0.375rem;
   text-align: center;
   font-weight: bold;
-  font-size: 0.9rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 0.675rem;
+  box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Improve existing notification styles */
 .gameStatus, .waitingMsg, .winnerMessage, .roundEndMessage {
-  border-radius: 5px;
-  padding: 10px 20px;
-  margin: 10px 0;
+  border-radius: px;
+  padding: 0px 0px;
+  margin: -5px 0;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.1);
   animation: fadeIn 0.3s ease-in-out;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
+  from { opacity: 0; transform: translateY(-7.5px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-/* Add blue notification style for waiting for next hand */
-.nextHandNotification {
-  background-color: #007bff !important; /* Blue */
-  color: white !important;
-  border-radius: 5px;
-  padding: 10px 20px;
-  margin: 10px 0;
-  text-align: center;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Add shine animation for winning card */
 .winningCard {
   position: relative;
   overflow: hidden;
-  transform: translateY(-5px);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-  border: 2px solid gold;
+  transform: translateY(-3.75px);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+  border: 1.5px solid gold;
   animation: pulseGold 1.5s infinite;
 }
 
@@ -768,20 +773,20 @@
 
 @keyframes pulseGold {
   0% {
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 7.5px rgba(255, 215, 0, 0.5);
   }
   50% {
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
   }
   100% {
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 7.5px rgba(255, 215, 0, 0.5);
   }
 }
 
 /* Winner label style */
 .winnerLabel {
-  margin-left: 5px;
-  font-size: 1.2rem;
+  margin-left: 3.75px;
+  font-size: 0.9rem;
   animation: pulse 1.5s infinite;
   display: inline-block;
 }
@@ -794,20 +799,18 @@
 }
 
 .cardSelected {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  transform: translateY(-3.75px);
+  box-shadow: 0 3.75px 11.25px rgba(0, 0, 0, 0.3);
   opacity: 0.8;
   pointer-events: none;
 }
-
-/* REMOVED CONNECTION-RELATED STYLES - see CONNECTION_ERROR_BACKUP.md for reference */
 
 /* Add styles for cancelled cards */
 .cancelledCard {
   position: relative;
   opacity: 0.5;
   filter: grayscale(70%) brightness(0.7);
-  border: 2px solid #dc3545 !important;
+  border: 1.5px solid #dc3545 !important;
   transform: scale(0.95);
   transition: all 0.3s ease;
   animation: cancelPulse 2s infinite;
@@ -818,7 +821,7 @@
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+    box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
   }
 }
 
@@ -828,36 +831,31 @@
   left: 0;
   right: 0;
   bottom: 0;
+  background-color: rgba(220, 53, 69, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(220, 53, 69, 0.4);
-  border-radius: 8px;
-  pointer-events: none;
-  animation: fadeInOverlay 0.3s ease-in-out;
+  border-radius: 6px;
+  animation: fadeInOverlay 0.5s ease-in-out;
 }
 
 @keyframes fadeInOverlay {
-  from { 
-    opacity: 0; 
-    transform: scale(0.8);
+  from {
+    opacity: 0;
+    background-color: rgba(220, 53, 69, 0);
   }
-  to { 
-    opacity: 1; 
-    transform: scale(1);
+  to {
+    opacity: 1;
+    background-color: rgba(220, 53, 69, 0.8);
   }
 }
 
 .cancellationX {
-  font-size: 3.5rem;
-  color: #ffffff;
+  color: white;
+  font-size: 1.875rem;
   font-weight: bold;
-  text-shadow: 
-    2px 2px 0px #dc3545,
-    -2px -2px 0px #dc3545,
-    2px -2px 0px #dc3545,
-    -2px 2px 0px #dc3545;
-  animation: bounceIn 0.5s ease-out;
+  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.5);
+  animation: bounceIn 0.6s ease-out;
 }
 
 @keyframes bounceIn {
@@ -866,11 +864,23 @@
     opacity: 0;
   }
   50% {
-    transform: scale(1.3);
+    transform: scale(1.2);
     opacity: 0.8;
   }
   100% {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Notification area to prevent layout jumping */
+.notificationArea {
+  min-height: 45px; /* Reserve space to prevent layout shifts */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Make notifications full width */
+  gap: 0.375rem;
+  margin: 0.75rem 0;
+  transition: all 0.3s ease;
+  width: 100%; /* Take full width of container */
 } 

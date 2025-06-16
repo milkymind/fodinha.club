@@ -23,7 +23,7 @@ interface GuestProviderProps {
 
 export const GuestProvider: React.FC<GuestProviderProps> = ({ children }) => {
   const [isGuest, setIsGuest] = useState(false);
-  const [guestName, setGuestName] = useState('Guest');
+  const [guestName, setGuestName] = useState('');
 
   return (
     <GuestContext.Provider value={{ isGuest, setIsGuest, guestName, setGuestName }}>

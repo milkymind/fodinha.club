@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Send Discord notification if webhook URL is configured
-    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    const discordWebhookUrl = process.env.DISCORD_BUG_WEBHOOK_URL;
     
     if (discordWebhookUrl && discordWebhookUrl !== 'your_discord_webhook_url_here' && discordWebhookUrl.startsWith('https://')) {
       try {

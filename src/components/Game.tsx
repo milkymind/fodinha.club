@@ -64,6 +64,7 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
   const [notificationType, setNotificationType] = useState<'turn' | 'waiting' | 'gameState' | 'nextHand' | ''>('');
   const [lastSocketActivity, setLastSocketActivity] = useState<number>(Date.now());
   const [roundTransitionActive, setRoundTransitionActive] = useState<boolean>(false);
+  const [tieNotificationTimeout, setTieNotificationTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastPollingTime, setLastPollingTime] = useState<number>(Date.now());
   const [isProcessingGameState, setIsProcessingGameState] = useState<boolean>(false);
   const [isSubmittingBet, setIsSubmittingBet] = useState<boolean>(false);
@@ -134,6 +135,21 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     });
   }, [lastRequestTimestamps, gameState?.cartas]);
   
+  // Prevent auto-scrolling when component mounts
+  useEffect(() => {
+    // Prevent page from auto-scrolling to bottom
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      // Also prevent any smooth scrolling behavior that might cause issues
+      document.documentElement.style.scrollBehavior = 'auto';
+      
+      // Clean up on unmount
+      return () => {
+        document.documentElement.style.scrollBehavior = '';
+      };
+    }
+  }, []); // Run only once on mount
+
   // Set up socket connections and listeners
   useEffect(() => {
     if (!socket) {
@@ -358,20 +374,19 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
           
           // Check if it was a tie (the multiplier will be > 1 if there was a tie in the previous round)
           if (newGameState?.tie_in_previous_round) {
-            setWinnerMessage(t('tie_message', { value: newGameState.multiplicador || 1 }));
-            setNotificationType('gameState');
+            handleTieNotification(newGameState.multiplicador || 1, isHost());
           } else {
             const winnerName = newGameState?.player_names?.[roundWinner];
             setWinnerMessage(t('round_winner', { player: winnerName }));
             setNotificationType('gameState');
-          }
-            setPrevRoundWinner(roundWinner);
-          setLastWinnerMessageTime(Date.now());
+            setLastWinnerMessageTime(Date.now());
             
-          // Clear the message after 1.5 seconds
+            // Clear the message after 1.5 seconds
             setTimeout(() => {
               setWinnerMessage(null);
-          }, 1500);
+            }, 1500);
+          }
+          setPrevRoundWinner(roundWinner);
           }
           
           // Update game state
@@ -667,6 +682,31 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     };
   }, [gameId, playerId, gameState, lastActivityTime, lastSocketActivity, lastPollingTime, isProcessingGameState, lastRequestTimestamps, socket]);
 
+  // Helper function to handle tie notifications with debouncing
+  const handleTieNotification = (multiplicador: number, isHost: boolean) => {
+    // Clear any existing timeout to prevent multiple overlapping notifications
+    if (tieNotificationTimeout) {
+      clearTimeout(tieNotificationTimeout);
+    }
+    
+    // Only set the message if it's not already set to prevent flashing
+    if (!winnerMessage || !winnerMessage.includes('tie')) {
+      setWinnerMessage(t('tie_message', { value: multiplicador || 1 }));
+      setNotificationType('gameState');
+      setLastWinnerMessageTime(Date.now());
+    }
+    
+    // Set timeout to 1.5 seconds for all players
+    const timeout = 1500;
+    
+    const newTimeout = setTimeout(() => {
+      setWinnerMessage(null);
+      setTieNotificationTimeout(null);
+    }, timeout);
+    
+    setTieNotificationTimeout(newTimeout);
+  };
+
   // Update last activity time when user interacts with the page
   useEffect(() => {
     const handleUserActivity = () => {
@@ -693,6 +733,15 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
       window.removeEventListener('touchstart', handleUserActivity);
     };
   }, [winnerMessage, lastWinnerMessageTime]);
+
+  // Cleanup tie notification timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tieNotificationTimeout) {
+        clearTimeout(tieNotificationTimeout);
+      }
+    };
+  }, [tieNotificationTimeout]);
 
   // Update game status message based on state
   const updateGameStatus = (state: GameState) => {
@@ -740,7 +789,7 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         // Between rounds in a multi-card hand
         if (state.tie_in_previous_round) {
           setGameStatus(t('round_complete', { prev: state.current_round || 1, current: (state.current_round || 1) + 1 }));
-          setWinnerMessage(t('tie_message', { value: state.multiplicador || 1 }));
+          handleTieNotification(state.multiplicador || 1, isHost());
           setNotificationType('gameState');
           
           const nextPlayerToPlay = state.ordem_jogada?.[0];
@@ -776,12 +825,7 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         // If there was a tie in the final round that was resolved by a tiebreaker
         if (state.tie_resolved_by_tiebreaker && state.last_round_winner) {
           const winnerName = state.player_names[state.last_round_winner];
-          setWinnerMessage(t('tie_message', { value: state.multiplicador || 1 }));
-          
-          // Have this message disappear after 3 seconds
-          setTimeout(() => {
-            setWinnerMessage(null);
-          }, 3000);
+          handleTieNotification(state.multiplicador || 1, isHost());
         }
         
         // Show results summary
@@ -1402,9 +1446,6 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
 
   return (
     <div className={styles.gameContainer} onClick={() => setLastActivityTime(Date.now())}>
-      <div className={homeStyles.headerLogo}>
-        <HeaderLogo />
-      </div>
       <div className={styles.header}>
         <h2>{t('game_room', { id: gameId })}</h2>
         <div className={styles.gameInfo}>
@@ -1425,30 +1466,6 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         </button>
       </div>
 
-      {gameStatus && (
-        <div className={`${styles.gameStatus} ${getNotificationClass()}`}>
-          <p>{gameStatus}</p>
-        </div>
-      )}
-
-      {waitingMsg && (
-        <div className={styles.waitingMsg}>
-          <p>{waitingMsg}</p>
-        </div>
-      )}
-
-      {winnerMessage && (
-        <div className={`${styles.winnerMessage} ${styles.gameStateNotification}`}>
-          <p>{winnerMessage}</p>
-        </div>
-      )}
-      
-      {roundEndMessage && (
-        <div className={`${styles.roundEndMessage} ${styles.gameStateNotification}`}>
-          <p>{roundEndMessage}</p>
-        </div>
-      )}
-
       <div className={styles.playersList}>
         <h3>{t('players')}</h3>
         <div className={styles.playersGrid}>
@@ -1463,34 +1480,32 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
                 ${isPlayerWaiting(id) ? styles.waitingPlayer : ''}`}
             >
               <div className={styles.playerName}>
-                {gameState.player_names[id]} {id === playerId ? t('you') : ''}
+                {gameState.player_names[id]}
                 {gameState.dealer === id && <span className={styles.dealerLabel}> 🎲</span>}
                 {isPlayerInactive(id) && <span className={styles.inactiveLabel}> ⚠️ {t('inactive')}</span>}
-                {isPlayerWaiting(id) && <span className={styles.waitingLabel}> ({t('waiting')})</span>}
               </div>
               <div className={styles.playerStats}>
                 <div className={styles.playerLives}>
                   {'❤️'.repeat(Math.max(0, gameState.vidas[id]))}
                   {gameState.vidas[id] <= 0 && <span className={styles.eliminatedText}>{t('eliminated')}</span>}
                 </div>
-                {gameState.palpites && gameState.palpites[id] !== undefined && (
-                  <div className={styles.playerBet}>
-                    {t('bet')}: {gameState.palpites[id]}
-                  </div>
-                )}
-                {gameState.vitorias && (
-                  <div className={styles.playerWins}>
-                    {t('wins')}: {gameState.vitorias[id] || 0}
-                  </div>
-                )}
-                {gameState.palpites && gameState.palpites[id] !== undefined && gameState.vitorias && (
-                  <div className={styles.playerNeeds}>
-                    <div className={styles.needsLabel}>{t('needs_to_win')}</div>
-                    <div className={styles.needsValue}>
-                      {Math.max(0, gameState.palpites[id] - (gameState.vitorias[id] || 0))}
+                {(gameState.palpites && gameState.palpites[id] !== undefined) || gameState.vitorias ? (
+                  <>
+                    <div className={styles.playerBetWins}>
+                      {gameState.palpites && gameState.palpites[id] !== undefined && (
+                        <span className={styles.betText}>{t('bet')}: {gameState.palpites[id]}</span>
+                      )}
+                      {gameState.vitorias && (
+                        <span className={styles.winsText}>{t('wins')}: {gameState.vitorias[id] || 0}</span>
+                      )}
                     </div>
-                  </div>
-                )}
+                    {gameState.palpites && gameState.palpites[id] !== undefined && gameState.vitorias && (
+                      <div className={styles.playerNeeds}>
+                        <span className={styles.needsText}>{t('needs_to_win')}: {Math.max(0, gameState.palpites[id] - (gameState.vitorias[id] || 0))}</span>
+                      </div>
+                    )}
+                  </>
+                ) : null}
               </div>
             </div>
           ))}
@@ -1584,6 +1599,35 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         )}
       </div>
 
+      {/* Consolidated notification area - prevent overlapping notifications */}
+      {(gameStatus || winnerMessage || roundEndMessage) && (
+        <div className={styles.notificationArea}>
+          {gameStatus && (
+            <div className={`${styles.gameStatus} ${getNotificationClass()}`}>
+              <p>{gameStatus}</p>
+            </div>
+          )}
+          
+          {winnerMessage && (
+            <div className={`${styles.winnerMessage} ${styles.gameStateNotification}`}>
+              <p>{winnerMessage}</p>
+            </div>
+          )}
+          
+          {roundEndMessage && (
+            <div className={`${styles.roundEndMessage} ${styles.gameStateNotification}`}>
+              <p>{roundEndMessage}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {waitingMsg && (
+        <div className={styles.waitingMsg}>
+          <p>{waitingMsg}</p>
+        </div>
+      )}
+
       {gameState?.estado === 'aguardando' && playerId === 1 && (
         <div className={styles.actionContainer}>
           <button 
@@ -1592,12 +1636,6 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
           >
             {t('start_game')}
           </button>
-        </div>
-      )}
-
-      {gameState?.estado === 'aguardando' && playerId !== 1 && (
-        <div className={styles.actionContainer}>
-          <p className={`${styles.waitingMsg} ${styles.nextHandNotification}`}>{t('waiting_to_start')}</p>
         </div>
       )}
 
@@ -1701,7 +1739,7 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
                 className={`${styles.resultRow} ${gameState.eliminados?.includes(id) ? styles.eliminated : styles.winner}`}
               >
                 <span className={styles.resultName}>
-                  {gameState.player_names[id]} {id === playerId ? t('you') : ''}: 
+                  {gameState.player_names[id]}: 
                 </span>
                 <span className={styles.resultLives}>
                   {gameState.vidas[id] <= 0 ? t('eliminated') : `${gameState.vidas[id]} ${t('lives')}`}
@@ -1715,15 +1753,15 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
           <div className={styles.gameOverButtons}>
             {isHost() && onReturnToLobby && (
               <button className={styles.actionButton} onClick={onReturnToLobby}>
-            {t('new_game')}
-          </button>
+                {t('new_game')}
+              </button>
             )}
-          <button className={styles.leaveButton} onClick={onLeaveGame}>
-            {t('leave_game')}
-          </button>
+            <button className={styles.leaveButton} onClick={onLeaveGame}>
+              {t('leave_game')}
+            </button>
           </div>
         </div>
       )}
     </div>
   );
-} 
+}

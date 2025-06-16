@@ -101,8 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       carta_meio = deck.shift();
     }
     
-    const manilha = carta_meio ? getNextManilha(carta_meio.value) : '';
-    console.log(`Middle card: ${carta_meio?.value}${carta_meio?.suit}, Manilha: ${manilha}`);
+    const cartaMeioString = carta_meio ? carta_meio.value + carta_meio.suit : '';
+    const manilha = carta_meio ? getNextManilha(cartaMeioString) : '';
+    console.log(`Middle card: ${cartaMeioString}, Manilha: ${manilha}`);
 
     // Deal cards to players
     const hands: { [key: number]: string[] } = {};
@@ -150,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       player_names,
       vidas,
       estado: 'apostas',
-      carta_meio: carta_meio ? carta_meio.value + carta_meio.suit : '',
+      carta_meio: cartaMeioString,
       manilha,
       maos: hands,
       original_maos: original_hands, // Add original hands for one-card games
@@ -182,7 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Store information about the middle card workaround for UI display
       middle_card_workaround: needsMiddleCardWorkaround ? {
         used: true,
-        card: carta_meio ? carta_meio.value + carta_meio.suit : ''
+        card: cartaMeioString
       } : {
         used: false
       },
