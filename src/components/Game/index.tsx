@@ -1041,6 +1041,9 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         winningCardPlayedBy={gameState?.winning_card_played_by}
         currentRound={gameState?.current_round}
         totalCards={gameState?.cartas}
+        cancelledCards={gameState?.cancelled_cards}
+        tieResolvedByTiebreaker={gameState?.tie_resolved_by_tiebreaker}
+        multiplicador={gameState?.multiplicador}
       />
 
       {/* Consolidated notification area - prevent overlapping notifications */}

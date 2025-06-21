@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import Game from '../src/components/Game/index';
 import { useLanguage } from '../contexts/LanguageContext';
+import { SocketContext } from '../contexts/SocketContext';
 
 import { useGuest } from '../contexts/GuestContext';
 import AuthWrapper from '../components/AuthWrapper';
@@ -22,6 +23,7 @@ export default function Home() {
   const { t } = useLanguage();
   const { user, isLoaded } = useUser();
   const { isGuest, guestName } = useGuest();
+  const socket = useContext(SocketContext);
   const [gameId, setGameId] = useState<string>('');
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
@@ -171,7 +173,7 @@ export default function Home() {
       // Refresh lobby info multiple times to ensure we get updated player list
       const refreshLobby = async (attempts = 0) => {
         try {
-          const lobbyResponse = await fetch(`/api/lobby-info/${gameId}`);
+          const lobbyResponse = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
           const lobbyData = await lobbyResponse.json();
           if (lobbyData.status === 'success') {
             setLobbyInfo(lobbyData.lobby);
@@ -194,7 +196,7 @@ export default function Home() {
     if (gameId && playerId && !gameStarted) {
       const poll = async () => {
         try {
-          const response = await fetch(`/api/lobby-info/${gameId}`);
+          const response = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
           const data = await response.json();
           if (data.status === 'success') {
             setLobbyInfo(data.lobby);
@@ -207,19 +209,104 @@ export default function Home() {
         }
       };
       poll();
-      pollingRef.current = setInterval(poll, 1000); // Fast polling for game start detection
+      pollingRef.current = setInterval(poll, 500); // Poll every 500ms for maximum responsiveness
       return () => {
         if (pollingRef.current) clearInterval(pollingRef.current);
       };
     }
   }, [gameId, playerId, gameStarted]);
 
+  // Listen for lobby updates via socket and join game room
+  useEffect(() => {
+    if (gameId && playerId && !gameStarted && socket) {
+      // Join the game room so the server knows this socket belongs to this player/game
+      console.log(`Joining game room ${gameId} as player ${playerId}`);
+      socket.emit('join-game', { 
+        gameId, 
+        playerId, 
+        playerName: playerName || `Player ${playerId}` 
+      });
+
+      const handleLobbyUpdate = (data: any) => {
+        console.log('Received lobby update:', data);
+        if (data.gameId === gameId) {
+          // Refresh lobby info to get the latest player list
+          fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`)
+            .then(response => response.json())
+            .then(lobbyData => {
+              if (lobbyData.status === 'success') {
+                setLobbyInfo(lobbyData.lobby);
+                console.log('Updated lobby after socket notification:', lobbyData.lobby.players.length, 'players');
+              }
+            })
+            .catch(error => console.error('Error refreshing lobby after update:', error));
+        }
+      };
+
+      const handlePlayerDisconnected = (data: any) => {
+        console.log('Player disconnected:', data);
+        // Trigger immediate lobby refresh with force cleanup
+        fetch(`/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`)
+          .then(response => response.json())
+          .then(lobbyData => {
+            if (lobbyData.status === 'success') {
+              setLobbyInfo(lobbyData.lobby);
+              console.log('Updated lobby after player disconnect:', lobbyData.lobby.players.length, 'players');
+            }
+          })
+          .catch(error => console.error('Error refreshing lobby after disconnect:', error));
+      };
+
+      const handlePlayerLeft = (data: any) => {
+        console.log('Player left:', data);
+        // Trigger immediate lobby refresh to update player list
+        fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`)
+          .then(response => response.json())
+          .then(lobbyData => {
+            if (lobbyData.status === 'success') {
+              setLobbyInfo(lobbyData.lobby);
+              console.log('Updated lobby after player left:', lobbyData.lobby.players.length, 'players');
+            }
+          })
+          .catch(error => console.error('Error refreshing lobby after player left:', error));
+      };
+
+      const handleForceLobbyRefresh = (data: any) => {
+        console.log('Force lobby refresh triggered:', data);
+        // Immediate aggressive refresh with force cleanup
+        fetch(`/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`)
+          .then(response => response.json())
+          .then(lobbyData => {
+            if (lobbyData.status === 'success') {
+              setLobbyInfo(lobbyData.lobby);
+              console.log('Force refreshed lobby:', lobbyData.lobby.players.length, 'players');
+            }
+          })
+          .catch(error => console.error('Error in force lobby refresh:', error));
+      };
+
+      socket.on('lobby-updated', handleLobbyUpdate);
+      socket.on('player-disconnected', handlePlayerDisconnected);
+      socket.on('player-left', handlePlayerLeft);
+      socket.on('force-lobby-refresh', handleForceLobbyRefresh);
+      
+      return () => {
+        socket.off('lobby-updated', handleLobbyUpdate);
+        socket.off('player-disconnected', handlePlayerDisconnected);
+        socket.off('player-left', handlePlayerLeft);
+        socket.off('force-lobby-refresh', handleForceLobbyRefresh);
+        // Leave the game room when component unmounts or dependencies change
+        socket.emit('leave-game', { gameId, playerId });
+      };
+    }
+  }, [gameId, playerId, gameStarted, socket, playerName]);
+
   // Additional polling for players in game to detect lobby return
   useEffect(() => {
     if (gameId && playerId && gameStarted) {
       const pollForLobbyReturn = async () => {
         try {
-          const response = await fetch(`/api/lobby-info/${gameId}`);
+          const response = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
           const data = await response.json();
           if (data.status === 'success' && !data.lobby.gameStarted) {
             // Game has been returned to lobby
@@ -229,7 +316,7 @@ export default function Home() {
             // Trigger additional refresh to catch any players who left
             setTimeout(async () => {
               try {
-                const refreshResponse = await fetch(`/api/lobby-info/${gameId}`);
+                const refreshResponse = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
                 const refreshData = await refreshResponse.json();
                 if (refreshData.status === 'success') {
                   setLobbyInfo(refreshData.lobby);

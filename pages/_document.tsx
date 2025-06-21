@@ -4,6 +4,7 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        <title>FODINHA.CLUB</title>
         
         {/* Modern SVG favicon (preferred) */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

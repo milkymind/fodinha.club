@@ -389,6 +389,35 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
       }
     });
 
+    // Handle explicit leave-game events
+    socket.on('leave-game', async ({ gameId, playerId }: { gameId: string, playerId: number }) => {
+      console.log(`Player ${playerId} explicitly leaving game ${gameId}`);
+      
+      try {
+        // Remove from active games tracking
+        if (activeGames.has(gameId)) {
+          const gameConnections = activeGames.get(gameId);
+          if (gameConnections && gameConnections.get(playerId) === socket.id) {
+            gameConnections.delete(playerId);
+            console.log(`Player ${playerId} removed from active tracking for game ${gameId} (explicit leave)`);
+          }
+        }
+        
+        // Leave the socket room
+        await socket.leave(gameId);
+        
+        // Clear socket's game association
+        typedSocket.gameId = undefined;
+        typedSocket.playerId = undefined;
+        
+        // Notify other players
+        socket.to(gameId).emit('player-left', { playerId });
+        
+      } catch (error) {
+        console.error(`Error handling leave-game for player ${playerId}:`, error);
+      }
+    });
+
     // Add immediate game state request handler for faster updates
     socket.on('request-game-state', async ({ gameId, playerId }: { gameId: string, playerId: number }) => {
       try {
@@ -510,36 +539,59 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
       }
     });
 
-    // Handle disconnections with reconnection grace period
+    // Handle disconnections with different grace periods for lobbies vs active games
     socket.on('disconnect', () => {
-      console.log(`Socket disconnected: ${socket.id}`);
+      console.log(`Socket disconnected: ${socket.id}${typedSocket.playerId ? ` (Player ${typedSocket.playerId})` : ''}`);
       
-      // Don't remove connection immediately - give a grace period for reconnection
+      // For immediate cleanup tracking, remove from activeGames immediately
+      // but keep a backup for potential reconnection
+      if (typedSocket.gameId && typedSocket.playerId) {
+        const gameConnections = activeGames.get(typedSocket.gameId);
+        if (gameConnections && gameConnections.get(typedSocket.playerId) === socket.id) {
+          // Remove immediately from active tracking
+          gameConnections.delete(typedSocket.playerId);
+          console.log(`Player ${typedSocket.playerId} removed from active tracking for game ${typedSocket.gameId}`);
+          
+          // Notify other players in the lobby about the disconnection
+          socket.to(typedSocket.gameId).emit('player-disconnected', { 
+            playerId: typedSocket.playerId,
+            socketId: socket.id
+          });
+          
+          // Trigger immediate lobby cleanup by emitting a special cleanup event
+          setTimeout(() => {
+            if (typedSocket.gameId) {
+              io.to(typedSocket.gameId).emit('force-lobby-refresh', {
+                gameId: typedSocket.gameId,
+                reason: 'player_disconnect'
+              });
+            }
+          }, 100); // Minimal delay to ensure disconnect is processed
+        }
+      }
+      
+      // Clean up connection tracking after a short delay
       setTimeout(() => {
         // After grace period, check if this socket is still disconnected
         if (!io.sockets.sockets.has(socket.id)) {
           activeConnections.delete(socket.id);
           
-          // Now handle game-related cleanup if needed
-          if (typedSocket.gameId && typedSocket.playerId) {
+          // Clean up empty game rooms after a longer delay
+          if (typedSocket.gameId) {
             const gameConnections = activeGames.get(typedSocket.gameId);
-            if (gameConnections && gameConnections.get(typedSocket.playerId) === socket.id) {
-              gameConnections.delete(typedSocket.playerId);
-              
-              // If game has no more connections, clean up after a longer delay
-              if (typedSocket.gameId && gameConnections.size === 0) {
-                setTimeout(() => {
-                  // Double check there are still no connections before cleaning up
-                  if (typedSocket.gameId && activeGames.has(typedSocket.gameId) && 
-                      activeGames.get(typedSocket.gameId)?.size === 0) {
-                    activeGames.delete(typedSocket.gameId);
-                  }
-                }, 60000); // 1 minute grace period for game cleanup
-              }
+            if (gameConnections && gameConnections.size === 0) {
+              setTimeout(() => {
+                // Double check there are still no connections before cleaning up
+                if (typedSocket.gameId && activeGames.has(typedSocket.gameId) && 
+                    activeGames.get(typedSocket.gameId)?.size === 0) {
+                  activeGames.delete(typedSocket.gameId);
+                  console.log(`Cleaned up empty game room: ${typedSocket.gameId}`);
+                }
+              }, 60000); // 1 minute grace period for game cleanup
             }
           }
         }
-      }, 30000); // 30 second grace period for reconnection
+      }, 5000); // 5 second grace period for connection cleanup
     });
     
     // Error handling with better diagnostics

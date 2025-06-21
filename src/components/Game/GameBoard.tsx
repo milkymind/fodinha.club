@@ -22,6 +22,9 @@ interface GameBoardProps {
   winningCardPlayedBy?: number;
   currentRound?: number;
   totalCards?: number;
+  cancelledCards?: [number, string][]; // Backend-provided cancelled cards
+  tieResolvedByTiebreaker?: boolean;
+  multiplicador?: number;
 }
 
 export const GameBoard = memo<GameBoardProps>(({
@@ -37,22 +40,32 @@ export const GameBoard = memo<GameBoardProps>(({
   lastPlayedCard,
   winningCardPlayedBy,
   currentRound,
-  totalCards
+  totalCards,
+  cancelledCards = [],
+  tieResolvedByTiebreaker,
+  multiplicador = 1
 }) => {
   const { t } = useLanguage();
 
-  // Helper function to check if a card is cancelled
+  // Function to determine if a card is cancelled
   const isCancelledCard = (playerIdOfCard: number, card: string): boolean => {
-    if (!mesa || mesa.length < 2) return false;
-    
-    // In the final round of a hand, cards should not be shown as cancelled
-    // because ties will be resolved by suit tiebreaker
-    const isLastRoundOfHand = currentRound === totalCards;
-    if (isLastRoundOfHand) {
-      return false; // Never show cards as cancelled in the final round
+    // Always trust the backend's cancelled_cards array if available
+    if (cancelledCards && cancelledCards.length > 0) {
+      return cancelledCards.some(([pid, cancelledCard]) => 
+        pid === playerIdOfCard && cancelledCard === card
+      );
     }
     
-    // Group all cards on the table by their strength
+    // Fallback logic only if backend doesn't provide cancelled_cards
+    if (!mesa || mesa.length < 2) return false;
+    
+    // In the final round of a hand, don't show cancellation unless explicitly told by backend
+    const isLastRoundOfHand = currentRound === totalCards;
+    if (isLastRoundOfHand && (!cancelledCards || cancelledCards.length === 0)) {
+      return false; // Trust that backend handles final round logic
+    }
+    
+    // Group cards by strength for fallback logic (non-final rounds)
     const cardsByStrength = new Map<number, [number, string][]>();
     
     for (const [pid, tableCard] of mesa) {
@@ -64,26 +77,19 @@ export const GameBoard = memo<GameBoardProps>(({
       cardsByStrength.get(strength)!.push([pid, tableCard]);
     }
     
-    // Check if our specific card is cancelled
-    const cardStrength = getCardStrength(card, manilha);
-    const cardsWithSameStrength = cardsByStrength.get(cardStrength) || [];
-    
-    // If there are 2 or more cards with the same strength, they start cancelling each other
-    if (cardsWithSameStrength.length >= 2) {
-      // Check if our card is in a cancelling group
-      const ourCardIndex = cardsWithSameStrength.findIndex(([pid, tableCard]) => 
-        pid === playerIdOfCard && tableCard === card
-      );
-      
-      if (ourCardIndex !== -1) {
-        // Cards cancel in pairs: 0&1, 2&3, 4&5, etc.
-        // If we have an even number of cards (2, 4, 6...), all are cancelled
-        // If we have an odd number (3, 5, 7...), the last one isn't cancelled
-        const pairIndex = Math.floor(ourCardIndex / 2);
-        const totalPairs = Math.floor(cardsWithSameStrength.length / 2);
+    // Check if this card's strength group has pairs that would cancel
+    for (const [strength, cards] of Array.from(cardsByStrength.entries())) {
+      if (cards.length >= 2) {
+        // Find the card we're checking
+        const cardIndex = cards.findIndex(([pid, tableCard]: [number, string]) => 
+          pid === playerIdOfCard && tableCard === card
+        );
         
-        // Our card is cancelled if it's in a complete pair
-        return pairIndex < totalPairs;
+        if (cardIndex !== -1) {
+          // In non-final rounds, pairs cancel out
+          const numCancelled = Math.floor(cards.length / 2) * 2;
+          return cardIndex < numCancelled;
+        }
       }
     }
     
@@ -94,8 +100,8 @@ export const GameBoard = memo<GameBoardProps>(({
   const isWinningCard = (playerIdOfCard: number, card: string): boolean => {
     if (!mesa || mesa.length === 0) return false;
     
-    // First check if the server has explicitly set a winning card player
-    // This happens in tie situations resolved by tiebreaker
+    // First priority: Check if the backend has explicitly set a winning card player
+    // This happens when ties are resolved by tiebreaker
     if (winningCardPlayedBy !== undefined) {
       // Find the card played by the winning player
       const winningPlayerCard = mesa.find(([pid, tableCard]) => 
@@ -108,41 +114,53 @@ export const GameBoard = memo<GameBoardProps>(({
       }
     }
     
-    // Get all cards on the table
-    const tableCards = mesa;
-    
-    // Find the card we're checking
-    const cardOnTable = tableCards.find(([pid, tableCard]) => 
-        pid === playerIdOfCard && tableCard === card
-      );
-    
-      if (!cardOnTable) return false;
-      
-    // Check if this is a cancelled card first
+    // Check if this is a cancelled card first - cancelled cards can't win
     if (isCancelledCard(playerIdOfCard, card)) {
       return false;
     }
     
-    // If there's a manilha on the table, find the highest manilha
-    const manilhaCards = tableCards.filter(([, tableCard]) => {
+    // Get all cards on the table that are NOT cancelled
+    const nonCancelledCards = mesa.filter(([pid, tableCard]) => 
+      !isCancelledCard(pid, tableCard)
+    );
+    
+    // If no non-cancelled cards, no winner can be determined
+    if (nonCancelledCards.length === 0) {
+      return false;
+    }
+    
+    // Find the card we're checking among non-cancelled cards
+    const cardOnTable = nonCancelledCards.find(([pid, tableCard]) => 
+      pid === playerIdOfCard && tableCard === card
+    );
+    
+    if (!cardOnTable) return false;
+    
+    // Among non-cancelled cards, find the strongest
+    // First check if there are any manilhas
+    const manilhaCards = nonCancelledCards.filter(([, tableCard]) => {
       const cardValue = tableCard.substring(0, tableCard.length - 1);
       return cardValue === manilha;
     });
     
     if (manilhaCards.length > 0) {
-      // If this card is not a manilha, it can't win
+      // If this card is not a manilha, it can't win when manilhas are present
       const thisCardValue = card.substring(0, card.length - 1);
       if (thisCardValue !== manilha) {
         return false;
       }
       
-      // Among manilhas, find the strongest
-      const maxManilhaStrength = Math.max(...manilhaCards.map(([, tableCard]) => getCardStrength(tableCard, manilha)));
+      // Among manilhas, find the strongest using suit ordering
+      const maxManilhaStrength = Math.max(...manilhaCards.map(([, tableCard]) => 
+        getCardStrength(tableCard, manilha)
+      ));
       return getCardStrength(card, manilha) === maxManilhaStrength;
     }
-        
-    // No manilhas on table, find highest regular card
-    const maxStrength = Math.max(...tableCards.map(([, tableCard]) => getCardStrength(tableCard, manilha)));
+    
+    // No manilhas among non-cancelled cards, find highest regular card
+    const maxStrength = Math.max(...nonCancelledCards.map(([, tableCard]) => 
+      getCardStrength(tableCard, manilha)
+    ));
     return getCardStrength(card, manilha) === maxStrength;
   };
 
@@ -167,6 +185,12 @@ export const GameBoard = memo<GameBoardProps>(({
               <span>{t('manilha')}: </span>
               <span className={styles.manilhaValue}>{manilha}</span>
             </div>
+            {multiplicador > 1 && (
+              <div className={styles.multiplicadorInfo}>
+                <span>{t('multiplier')}: </span>
+                <span className={styles.multiplicadorValue}>{multiplicador}x</span>
+              </div>
+            )}
           </div>
         </div>
       )}

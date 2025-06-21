@@ -13,6 +13,7 @@ type Lobby = {
   gameStarted?: boolean;
   gameState?: any;
   lastUpdated?: string; // ISO string of the last update time
+  lastPlayerCleanup?: string; // ISO string of the last player cleanup time
 };
 
 type Data = {

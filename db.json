@@ -5170,6 +5170,168 @@
       },
       "lastUpdated": "2025-06-20T04:55:52.722Z",
       "cachedAt": 1750395345270
+    },
+    "1VND": {
+      "gameId": "1VND",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player 1"
+        },
+        {
+          "id": 2,
+          "name": "Player 2"
+        },
+        {
+          "id": 3,
+          "name": "Player 3"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-21T17:58:37.639Z",
+      "lastPlayerCleanup": "2025-06-21T17:58:27.126Z",
+      "cachedAt": 1750528707126
+    },
+    "K0OM": {
+      "gameId": "K0OM",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player 1"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-21T18:08:40.866Z",
+      "lastPlayerCleanup": "2025-06-21T18:08:40.866Z",
+      "cachedAt": 1750529305865
+    },
+    "T5UO": {
+      "gameId": "T5UO",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player 1"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-21T18:15:32.196Z",
+      "lastPlayerCleanup": "2025-06-21T18:15:32.196Z",
+      "cachedAt": 1750529722198
+    },
+    "ZDPA": {
+      "gameId": "ZDPA",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player 1"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-21T18:19:25.066Z",
+      "lastPlayerCleanup": "2025-06-21T18:19:25.066Z",
+      "cachedAt": 1750529962058
+    },
+    "IS8I": {
+      "gameId": "IS8I",
+      "players": [
+        {
+          "id": 1,
+          "name": "Player 1"
+        },
+        {
+          "id": 2,
+          "name": "Player 2"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": true,
+      "gameState": {
+        "players": [
+          1,
+          2
+        ],
+        "player_names": {
+          "1": "Player 1",
+          "2": "Player 2"
+        },
+        "vidas": {
+          "1": 3,
+          "2": 3
+        },
+        "estado": "apostas",
+        "carta_meio": "K♦",
+        "manilha": "A",
+        "maos": {
+          "1": [
+            "4♠"
+          ],
+          "2": [
+            "2♥"
+          ]
+        },
+        "original_maos": {
+          "1": [
+            "4♠"
+          ],
+          "2": [
+            "2♥"
+          ]
+        },
+        "palpites": {},
+        "initial_lives": 3,
+        "current_round": 1,
+        "current_hand": 0,
+        "current_player_idx": 0,
+        "ordem_jogada": [
+          2,
+          1
+        ],
+        "multiplicador": 1,
+        "soma_palpites": 0,
+        "mesa": [],
+        "vitorias": {
+          "1": 0,
+          "2": 0
+        },
+        "dealer": 1,
+        "first_player": 2,
+        "cartas": 1,
+        "eliminados": [],
+        "direction": "up",
+        "startFrom": "one",
+        "maxCardsPerPlayer": 20,
+        "tie_in_previous_round": false,
+        "tie_resolved_by_tiebreaker": false,
+        "cancelled_cards": [],
+        "last_activity": {
+          "1": 1750530243829,
+          "2": 1750530243829
+        },
+        "middle_card_workaround": {
+          "used": false
+        }
+      },
+      "lastUpdated": "2025-06-21T18:24:03.829Z",
+      "lastPlayerCleanup": "2025-06-21T18:24:02.982Z",
+      "cachedAt": 1750530241702
     }
   }
 }
