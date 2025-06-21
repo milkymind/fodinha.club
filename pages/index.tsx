@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
-import Game from '../src/components/Game';
+import Game from '../src/components/Game/index';
 import { useLanguage } from '../contexts/LanguageContext';
 
 import { useGuest } from '../contexts/GuestContext';
@@ -189,7 +189,7 @@ export default function Home() {
     }
   };
 
-  // Poll lobby info every 2 seconds if in a lobby and game not started
+  // Poll lobby info less frequently - WebSocket should handle most updates
   useEffect(() => {
     if (gameId && playerId && !gameStarted) {
       const poll = async () => {
@@ -207,7 +207,7 @@ export default function Home() {
         }
       };
       poll();
-      pollingRef.current = setInterval(poll, 2000);
+      pollingRef.current = setInterval(poll, 1000); // Fast polling for game start detection
       return () => {
         if (pollingRef.current) clearInterval(pollingRef.current);
       };
@@ -245,8 +245,8 @@ export default function Home() {
         }
       };
       
-      // Poll every 3 seconds while in game to detect lobby return
-      const pollInterval = setInterval(pollForLobbyReturn, 3000);
+      // Poll every 15 seconds while in game to detect lobby return
+      const pollInterval = setInterval(pollForLobbyReturn, 15000);
       return () => clearInterval(pollInterval);
     }
   }, [gameId, playerId, gameStarted]);

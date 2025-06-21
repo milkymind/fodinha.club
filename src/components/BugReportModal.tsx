@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import styles from '../styles/BugReportModal.module.css';
+import styles from '../../styles/BugReportModal.module.css';
 
 interface BugReportModalProps {
   isOpen: boolean;

@@ -98,9 +98,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         lobby.gameState.cartas && 
         lobby.gameState.current_round < lobby.gameState.cartas) {
       
-      // If it's been at least 2000ms since the round ended
+      // If it's been at least 1500ms since the round ended
       if (lobby.gameState.round_over_timestamp && 
-          Date.now() - lobby.gameState.round_over_timestamp >= 2000) {
+          Date.now() - lobby.gameState.round_over_timestamp >= 1500) {
         
         console.log(`Starting next round after delay for game ${id}`);
         shouldUpdateLobby = true;
@@ -123,38 +123,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Reset the cards_played_this_round counter
         lobby.gameState.cards_played_this_round = 0;
         
-        // Set the first player for the next round (winner of the previous round)
-        const lastWinner = lobby.gameState.last_round_winner || lobby.gameState.last_trick_winner;
-        if (lastWinner) {
-          console.log(`Game ${id}: Round winner ${lastWinner} will start next round`);
-          
-          // Only include active (non-eliminated) players in the order
-          const activePlayers = lobby.gameState.players.filter((p: number) => !lobby.gameState.eliminados.includes(p));
-          
-          // Find the index of the winner in the active players array
-          const winnerIdx = activePlayers.indexOf(lastWinner);
-          if (winnerIdx !== -1) {
-            lobby.gameState.current_player_idx = 0;
-            
-            // Reorder the active players so the winner goes first
-            const newOrder = [];
-            for (let i = 0; i < activePlayers.length; i++) {
-              const idx = (winnerIdx + i) % activePlayers.length;
-              newOrder.push(activePlayers[idx]);
-            }
-            lobby.gameState.ordem_jogada = newOrder;
-            console.log(`Game ${id}: New turn order for round ${lobby.gameState.current_round}: ${newOrder.join(', ')}`);
-          } else {
-            // Fallback: if winner is not found in active players, use active players in current order
-            console.error(`Winner ${lastWinner} not found in active players. Using active players as fallback.`);
-            lobby.gameState.ordem_jogada = activePlayers;
-            lobby.gameState.current_player_idx = 0;
-          }
+        // Set the first player for the next round - use the same logic as play-card API
+        const activePlayers = lobby.gameState.players.filter((p: number) => !lobby.gameState.eliminados.includes(p));
+        let firstActivePlayer: number;
+        
+        // If there was a tie in the previous round, the tie winner starts the next round
+        if (lobby.gameState.tie_in_previous_round && lobby.gameState.last_round_winner) {
+          firstActivePlayer = lobby.gameState.last_round_winner;
+          console.log(`Game ${id}: Tie in previous round - player ${firstActivePlayer} starts next round`);
+        } else if (lobby.gameState.last_round_winner) {
+          // Normal case - round winner starts the next round
+          firstActivePlayer = lobby.gameState.last_round_winner;
+          console.log(`Game ${id}: Round winner ${firstActivePlayer} starts next round`);
         } else {
-          // No last winner, just use active players in current order
-          const activePlayers = lobby.gameState.players.filter((p: number) => !lobby.gameState.eliminados.includes(p));
+          // Fallback - use dealer/first_player logic
+          if (lobby.gameState.dealer !== undefined) {
+            const dealerIdx = lobby.gameState.players.indexOf(lobby.gameState.dealer);
+            firstActivePlayer = lobby.gameState.first_player || activePlayers[0];
+            
+            // Make sure the first player is still active
+            if (lobby.gameState.eliminados.includes(firstActivePlayer)) {
+              // Find the next active player after the dealer
+              for (let i = 1; i <= lobby.gameState.players.length; i++) {
+                const nextPlayerIdx = (dealerIdx + i) % lobby.gameState.players.length;
+                const nextPlayer = lobby.gameState.players[nextPlayerIdx];
+                if (!lobby.gameState.eliminados.includes(nextPlayer)) {
+                  firstActivePlayer = nextPlayer;
+                  break;
+                }
+              }
+            }
+          } else {
+            firstActivePlayer = activePlayers[0];
+          }
+          console.log(`Game ${id}: Using fallback logic - player ${firstActivePlayer} starts next round`);
+        }
+        
+        // Set up the play order with only active players, starting from the determined first player
+        const firstActiveIdx = activePlayers.indexOf(firstActivePlayer);
+        if (firstActiveIdx !== -1) {
+          lobby.gameState.ordem_jogada = [
+            ...activePlayers.slice(firstActiveIdx),
+            ...activePlayers.slice(0, firstActiveIdx)
+          ];
+          lobby.gameState.current_player_idx = 0;
+          console.log(`Game ${id}: New turn order for round ${lobby.gameState.current_round}: ${lobby.gameState.ordem_jogada.join(', ')}`);
+        } else {
+          // Fallback if player not found in active players
           lobby.gameState.ordem_jogada = activePlayers;
           lobby.gameState.current_player_idx = 0;
+          console.log(`Game ${id}: Fallback turn order for round ${lobby.gameState.current_round}: ${lobby.gameState.ordem_jogada.join(', ')}`);
         }
         
         // Reset the round_over_timestamp 

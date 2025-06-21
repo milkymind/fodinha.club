@@ -160,7 +160,7 @@
 
 .secondaryButton {
   background-color: transparent;
-  color: #ffffff;
+  color: var(--primary-color, #ff6600);
   border: 1.5px solid #ff6600;
   padding: 0.375rem 0.75rem;
   border-radius: 3px;

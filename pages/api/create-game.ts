@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { setLobby } from './persistent-store';
+import { createGameSchema, validateRequest } from '../../lib/validation';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -7,11 +8,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { player_name, lives, start_from } = req.body;
-
-    if (!player_name) {
-      return res.status(400).json({ status: 'error', error: 'Player name is required' });
+    // Validate request body
+    const bodyValidation = validateRequest(createGameSchema, req.body);
+    if (!bodyValidation.success) {
+      return res.status(400).json({
+        status: 'error',
+        error: bodyValidation.error
+      });
     }
+
+    const { player_name, lives, start_from } = bodyValidation.data;
 
     // Generate a unique game ID
     const gameId = Math.random().toString(36).substring(2, 6).toUpperCase();

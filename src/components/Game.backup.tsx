@@ -1,19 +1,9 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { SocketContext } from '../../contexts/SocketContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import styles from '../styles/Game.module.css';
+import styles from '../../styles/Game.module.css';
 import homeStyles from '../../styles/Home.module.css';
 import HeaderLogo from '../../components/HeaderLogo';
-import { 
-  getCardColorClass, 
-  getSuitClass, 
-  formatCard, 
-  getCardValue, 
-  getCardStrength,
-  sortCardsByStrength 
-} from './Game/utils/cardLogic';
-import { PlayerHand } from './Game/PlayerHand';
-import { BettingPanel } from './Game/BettingPanel';
 
 interface GameProps {
   gameId: string;
@@ -91,7 +81,9 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
   const [syncInProgress, setSyncInProgress] = useState<boolean>(false);
   const [betError, setBetError] = useState<string>('');
   
-  // Card sorting state moved to PlayerHand component
+  // Card sorting state
+  const [isCardsSorted, setIsCardsSorted] = useState<boolean>(false);
+  const [originalCardOrder, setOriginalCardOrder] = useState<string[]>([]);
   
   // Socket room join tracking
   const [hasJoinedRoom, setHasJoinedRoom] = useState<boolean>(false);
@@ -1159,7 +1151,34 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     }
   };
 
-  // Card utility functions moved to ./Game/utils/cardLogic.ts
+  // Get color class based on suit
+  const getCardColorClass = (card: string) => {
+    if (!card || card.length < 2) return '';
+    const naipe = card.charAt(card.length - 1);
+    return naipe === '♥' || naipe === '♦' ? styles.redCard : styles.blackCard;
+  };
+  
+  // Get suit symbol class
+  const getSuitClass = (card: string) => {
+    if (!card || card.length < 2) return '';
+    const naipe = card.charAt(card.length - 1);
+    switch (naipe) {
+      case '♣': return styles.clubSuit;
+      case '♥': return styles.heartSuit;
+      case '♠': return styles.spadeSuit;
+      case '♦': return styles.diamondSuit;
+      default: return '';
+    }
+  };
+
+  // Format card for display
+  const formatCard = (card: string) => {
+    if (!card || card.length < 2) return { value: '', suit: '' };
+    return { 
+      value: card.substring(0, card.length - 1),
+      suit: card.charAt(card.length - 1)
+    };
+  };
 
   // Check if it's player's turn
   const isPlayerTurn = () => {
@@ -1248,13 +1267,32 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
       return false; // Never show cards as cancelled in the final round
     }
     
-    // Using imported getCardValue and getCardStrength functions
+    // Get card value for comparison (without suit)
+    const getCardValue = (cardStr: string): string => {
+      return cardStr.substring(0, cardStr.length - 1);
+    };
+    
+    // Get the strength of this card
+    const getCardStrength = (cardStr: string): number => {
+      const ORDEM_CARTAS = {
+        '4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9
+      };
+      const value = cardStr.substring(0, cardStr.length - 1);
+      const suit = cardStr.charAt(cardStr.length - 1);
+      
+      if (gameState.manilha && value === gameState.manilha) {
+        const ORDEM_NAIPE_MANILHA = {'♦': 0, '♠': 1, '♥': 2, '♣': 3};
+        return 100 + (ORDEM_NAIPE_MANILHA[suit as keyof typeof ORDEM_NAIPE_MANILHA] || 0);
+      }
+      
+      return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
+    };
     
     // Group all cards on the table by their strength
     const cardsByStrength = new Map<number, [number, string][]>();
     
     for (const [pid, tableCard] of gameState.mesa) {
-      const strength = getCardStrength(tableCard, gameState.manilha);
+      const strength = getCardStrength(tableCard);
       
       if (!cardsByStrength.has(strength)) {
         cardsByStrength.set(strength, []);
@@ -1263,7 +1301,7 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     }
     
     // Check if our specific card is cancelled
-    const cardStrength = getCardStrength(card, gameState.manilha);
+    const cardStrength = getCardStrength(card);
     const cardsWithSameStrength = cardsByStrength.get(cardStrength) || [];
     
     // If there are 2 or more cards with the same strength, they start cancelling each other
@@ -1335,20 +1373,76 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
       }
       
       // Among manilhas, find the strongest
-      // Using imported getCardStrength function
+      const getCardStrength = (cardStr: string): number => {
+        const suit = cardStr.charAt(cardStr.length - 1);
+        const ORDEM_NAIPE = {'♠': 3, '♥': 2, '♦': 1, '♣': 0};
+        return ORDEM_NAIPE[suit as keyof typeof ORDEM_NAIPE] || 0;
+      };
         
-      const maxManilhaStrength = Math.max(...manilhaCards.map(([, tableCard]) => getCardStrength(tableCard, gameState.manilha)));
-      return getCardStrength(card, gameState.manilha) === maxManilhaStrength;
+      const maxManilhaStrength = Math.max(...manilhaCards.map(([, tableCard]) => getCardStrength(tableCard)));
+      return getCardStrength(card) === maxManilhaStrength;
         }
         
     // No manilhas on table, find highest regular card
-    // Using imported getCardStrength function
+    const getCardStrength = (cardStr: string): number => {
+      const value = cardStr.substring(0, cardStr.length - 1);
+      const ORDEM_CARTAS = {'3': 10, '2': 9, 'A': 8, 'K': 7, 'J': 6, 'Q': 5, '7': 4, '6': 3, '5': 2, '4': 1};
+        return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
+      };
       
-    const maxStrength = Math.max(...tableCards.map(([, tableCard]) => getCardStrength(tableCard, gameState.manilha)));
-    return getCardStrength(card, gameState.manilha) === maxStrength;
+    const maxStrength = Math.max(...tableCards.map(([, tableCard]) => getCardStrength(tableCard)));
+    return getCardStrength(card) === maxStrength;
   };
 
-  // Card sorting functions moved to PlayerHand component
+  // Card sorting functions
+  const toggleCardSorting = () => {
+    if (!gameState?.maos?.[playerId]) return;
+    
+    if (!isCardsSorted) {
+      // Store original order before sorting
+      setOriginalCardOrder([...gameState.maos[playerId]]);
+      setIsCardsSorted(true);
+        } else {
+      // Return to original order
+      setIsCardsSorted(false);
+    }
+  };
+
+  const getSortedCards = (): string[] => {
+    if (!gameState?.maos?.[playerId]) return [];
+    
+    if (!isCardsSorted) {
+      return gameState.maos[playerId];
+      }
+      
+    // Sort cards by strength (lowest to highest, left to right)
+    return [...gameState.maos[playerId]].sort((a, b) => {
+      const getCardStrength = (cardStr: string): number => {
+        const value = cardStr.substring(0, cardStr.length - 1);
+        const suit = cardStr.charAt(cardStr.length - 1);
+        
+        // Check if it's a manilha
+        if (value === gameState?.manilha) {
+          const ORDEM_NAIPE_MANILHA = {'♣': 10, '♦': 11, '♥': 12, '♠': 13};
+          return ORDEM_NAIPE_MANILHA[suit as keyof typeof ORDEM_NAIPE_MANILHA] || 0;
+        }
+        
+        // Regular card strength
+        const ORDEM_CARTAS = {'4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9};
+        return ORDEM_CARTAS[value as keyof typeof ORDEM_CARTAS] || 0;
+      };
+      
+      return getCardStrength(a) - getCardStrength(b); // Ascending order (weakest first)
+    });
+  };
+
+  const getOriginalCardIndex = (sortedIndex: number): number => {
+    if (!isCardsSorted || !gameState?.maos?.[playerId]) return sortedIndex;
+    
+    const sortedCards = getSortedCards();
+    const sortedCard = sortedCards[sortedIndex];
+    return gameState.maos[playerId].indexOf(sortedCard);
+  };
 
   return (
     <div className={styles.gameContainer} onClick={() => setLastActivityTime(Date.now())}>
@@ -1578,17 +1672,61 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         </div>
       )}
 
-      {/* Player Hand Component */}
-      <PlayerHand 
-        cards={gameState?.maos?.[playerId] || []}
-        manilha={gameState?.manilha}
-        gameState={gameState?.estado || ''}
-        isMyTurn={isPlayerTurn()}
-        isPlayingCard={isPlayingCard}
-        isOneCardHand={isOneCardHand}
-        clickedCardIndex={clickedCardIndex}
-        onPlayCard={playCard}
-      />
+      {/* Only show player's hand if it's not a one-card hand */}
+      {gameState?.maos && gameState.maos[playerId] && gameState.maos[playerId].length > 0 && 
+       !isOneCardHand && (
+        <div className={styles.handContainer}>
+          <div className={styles.handHeader}>
+          <h3>{t('your_hand')}</h3>
+            <button 
+              onClick={toggleCardSorting}
+              className={`${styles.filterButton} ${isCardsSorted ? styles.filterActive : ''}`}
+              title={isCardsSorted ? t('show_original_order') : t('sort_by_strength')}
+            >
+              📶
+            </button>
+          </div>
+          <div className={styles.cards}>
+            {getSortedCards().map((card, index) => (
+              <button
+                key={`${card}-${index}`}
+                onClick={() => gameState.estado === 'jogando' && isPlayerTurn() && !isPlayingCard ? playCard(getOriginalCardIndex(index)) : null}
+                className={`${styles.card} ${getCardColorClass(card)} ${
+                  gameState.estado === 'jogando' && isPlayerTurn() && !isPlayingCard ? styles.playable : ''
+                } ${clickedCardIndex === getOriginalCardIndex(index) ? styles.cardSelected : ''}`}
+                disabled={gameState.estado !== 'jogando' || !isPlayerTurn() || isPlayingCard}
+              >
+                <div className={styles.cardContent}>
+                  <span className={styles.cardValue}>{formatCard(card).value}</span>
+                  <span className={`${styles.cardSuit} ${getSuitClass(card)}`}>
+                    {formatCard(card).suit}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* For one-card hand during playing phase, show hidden card */}
+      {isOneCardHand && gameState?.estado === 'jogando' && gameState?.maos && gameState.maos[playerId] && (
+        <div className={styles.handContainer}>
+          <h3>{t('your_hand')}</h3>
+          <div className={styles.cards}>
+            <button
+              onClick={() => isPlayerTurn() && !isPlayingCard ? playCard(0) : null}
+              className={`${styles.card} ${styles.hiddenCard} ${
+                isPlayerTurn() && !isPlayingCard ? styles.playable : ''
+              } ${clickedCardIndex === 0 ? styles.cardSelected : ''}`}
+              disabled={!isPlayerTurn() || isPlayingCard}
+            >
+              <div className={styles.cardBackContent}>
+                <span>?</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {gameState?.estado === 'terminado' && (
         <div className={styles.gameOver}>

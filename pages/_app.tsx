@@ -8,6 +8,7 @@ import { GuestProvider } from '../contexts/GuestContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { ScrollProvider } from '../contexts/ScrollContext';
 import { ClerkProvider } from '@clerk/nextjs';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -164,22 +165,22 @@ CLERK_SECRET_KEY=sk_test_...`}
   }
 
   return (
-    <ClerkProvider 
-      publishableKey={clerkPublishableKey}
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
-    >
-      <ThemeProvider>
-        <GuestProvider>
-          <LanguageProvider>
-            <SocketContext.Provider value={socket}>
-              <ScrollProvider>
-                <Component {...pageProps} />
-              </ScrollProvider>
-            </SocketContext.Provider>
-          </LanguageProvider>
-        </GuestProvider>
-      </ThemeProvider>
-    </ClerkProvider>
+    <ErrorBoundary>
+      <ClerkProvider 
+        publishableKey={clerkPublishableKey}
+      >
+        <ThemeProvider>
+          <GuestProvider>
+            <LanguageProvider>
+              <SocketContext.Provider value={socket}>
+                <ScrollProvider>
+                  <Component {...pageProps} />
+                </ScrollProvider>
+              </SocketContext.Provider>
+            </LanguageProvider>
+          </GuestProvider>
+        </ThemeProvider>
+      </ClerkProvider>
+    </ErrorBoundary>
   );
 } 

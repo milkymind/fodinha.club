@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Game from '../src/components/Game'
+import Game from '../src/components/Game/index'
 import { SocketContext } from '../contexts/SocketContext'
 
 // Mock socket for testing

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import styles from '../styles/Home.module.css';
-import Game from '../components/Game';
+import styles from '../../styles/Home.module.css';
+import Game from '../components/Game/index';
 import DemoGame from '../components/DemoGame';
 
 interface LobbyInfo {

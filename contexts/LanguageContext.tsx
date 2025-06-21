@@ -50,6 +50,7 @@ const translations = {
     
     // Game Status Messages
     'waiting_to_start': 'Waiting to start the next hand',
+    'waiting_for_host': 'Waiting for host',
     'your_turn_bet': "It's your turn to place a bet!",
     'waiting_for_bet': 'Waiting for {{player}} to place a bet',
     'waiting_for_bets': 'Waiting for bets',
@@ -58,11 +59,18 @@ const translations = {
     'waiting_for_plays': 'Waiting for plays',
     'submitting_bet': 'Submitting Bet...',
     'playing_card': 'Playing...',
+    'unknown_state': 'Unknown game state',
+    'round_completed': 'Round completed',
+    'hand_completed': 'Hand completed',
+    'game_finished': 'Game finished!',
     
     // Betting
     'make_your_bet': 'Make Your Bet',
     'bet': 'Bet',
     'invalid_bet_error': 'Invalid bet: Total bets cannot equal the number of cards in the round.',
+    'valid_bet_error': 'Please enter a valid bet (0 or higher)',
+    'bet_too_high_error': 'Bet cannot be higher than {{maxBet}}',
+    'last_player_bet_error': 'Last player cannot make the total bets equal to the number of cards.',
     'total_bets_so_far': 'Total bets so far: {{current}} / {{total}}',
     'needs_to_win': 'Needs to Win',
     
@@ -196,9 +204,14 @@ const translations = {
     
     // Mensagens de Status
     'waiting_to_start': 'Aguardando para começar a próxima mão',
+    'waiting_for_host': 'Aguardando o host',
     'your_turn_bet': 'É sua vez de fazer uma aposta!',
     'waiting_for_bet': 'Aguardando {{player}} fazer uma aposta',
     'waiting_for_bets': 'Aguardando apostas',
+    'unknown_state': 'Estado do jogo desconhecido',
+    'round_completed': 'Rodada finalizada',
+    'hand_completed': 'Mão finalizada',
+    'game_finished': 'Jogo finalizado!',
     'your_turn_play': 'É sua vez de jogar uma carta!',
     'waiting_for_play': 'Aguardando {{player}} jogar uma carta',
     'waiting_for_plays': 'Aguardando jogadas',
@@ -209,6 +222,9 @@ const translations = {
     'make_your_bet': 'Faça Sua Aposta',
     'bet': 'Faz',
     'invalid_bet_error': 'Aposta inválida: O total de apostas não pode ser igual ao número de cartas na rodada.',
+    'valid_bet_error': 'Por favor, insira uma aposta válida (0 ou maior)',
+    'bet_too_high_error': 'A aposta não pode ser maior que {{maxBet}}',
+    'last_player_bet_error': 'O último jogador não pode fazer o total de apostas igual ao número de cartas.',
     'total_bets_so_far': 'Apostas até agora: {{current}} / {{total}}',
     'needs_to_win': 'Precisa Fazer',
     

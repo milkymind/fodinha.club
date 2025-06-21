@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
+import { playCardSchema, gameIdSchema, validateRequest } from '../../../lib/validation';
 
 const ORDEM_CARTAS = {
   '4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9
@@ -113,100 +114,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   try {
     const { id } = req.query;
-    const { player_id, card_index } = req.body;
     
-    // Generate a unique request ID and set headers for caching
-    const requestId = `card-${id}-${player_id}-${card_index}-${Date.now().toString().slice(0, -2)}`;
-    res.setHeader('Cache-Control', `private, max-age=${CACHE_CONTROL_TTL}`);
-    
-    // Check if client sent If-None-Match header for 304 response
-    const ifNoneMatch = req.headers['if-none-match'];
-    if (ifNoneMatch && responseCache.has(ifNoneMatch as string)) {
-      const cached = responseCache.get(ifNoneMatch as string)!;
-      if (Date.now() - cached.timestamp < 5000) { // Still valid for 5 seconds
-        res.setHeader('ETag', cached.etag);
-        return res.status(304).end(); // Not Modified
-      }
+    // Validate game ID - handle Next.js dynamic route parameter
+    const gameId = Array.isArray(id) ? id[0] : id;
+    const gameIdValidation = validateRequest(gameIdSchema, gameId);
+    if (!gameIdValidation.success) {
+      return res.status(400).json({
+        status: 'error',
+        error: `Invalid game ID: ${gameIdValidation.error}`
+      });
     }
+    
+    // Validate request body
+    const bodyValidation = validateRequest(playCardSchema, req.body);
+    if (!bodyValidation.success) {
+      return res.status(400).json({
+        status: 'error',
+        error: bodyValidation.error
+      });
+    }
+    
+    const { player_id, card_index } = bodyValidation.data;
+    
+    // Simple no-cache headers for card playing
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     
     // Start performance monitoring
     const requestStartTime = Date.now();
     
-    // Validate required fields
-    if (typeof player_id !== 'number' || typeof card_index !== 'number') {
-      return res.status(400).json({ 
-        status: 'error', 
-        error: 'Invalid player_id or card_index value' 
-      });
+    // Simple duplicate request check - shorter window
+    const duplicateKey = `play-card-${gameId}-${player_id}`;
+    const recentRequest = processedRequests.get(duplicateKey);
+    
+    if (recentRequest && Date.now() - recentRequest.timestamp < 1000) {
+      console.log(`Ignoring duplicate card play from player ${player_id}`);
+      return res.status(200).json(recentRequest.result);
     }
     
-    // Create a more specific request fingerprint with card index
-    const requestFingerprint = `play-card-${id}-${player_id}-${card_index}-${Date.now()}`;
+    console.log(`Processing card play: player ${player_id}, card index ${card_index}, game ${gameId}`);
     
-    // Use shorter timeframes for caching in multi-card hands to improve responsiveness
-    const cacheTimeMs = 3000; // Default to 3 seconds
-    
-    // Only check for similar requests with the same card index
-    const similarRequests = Array.from(processedRequests.entries())
-      .filter(([key, data]) => {
-        return key.startsWith(`play-card-${id}-${player_id}-${card_index}`) &&
-               Date.now() - data.timestamp < cacheTimeMs;
-      });
-    
-    if (similarRequests.length > 0) {
-      console.log(`Returning cached result for similar play-card request from player ${player_id}`);
-      // Return the most recent result
-      const mostRecent = similarRequests.reduce((latest, current) => {
-        return latest[1].timestamp > current[1].timestamp ? latest : current;
-      });
-      return res.status(200).json(mostRecent[1].result);
-    }
-    
-    // Check if there's an active request from this player for THIS specific card index
-    const recentKey = `play-card-${id}-${player_id}-${card_index}`;
-    const activeTimestamp = Array.from(activeRequests.entries())
-      .filter(([key, _]) => key === recentKey) // Exact match for card index
-      .reduce((latest, current) => {
-        return latest[1] > current[1] ? latest : current;
-      }, ['', 0])[1];
-    
-    // Use more aggressive rate limiting for first round (where misclicks are common)
-    // But gentler for later rounds where real plays might come in quicker succession
-    const rateLimitMs = 800; // Reduced from 1000ms
-    
-    if (activeTimestamp && (Date.now() - activeTimestamp) < rateLimitMs) {
-      console.log(`Rate limiting card play from player ${player_id} - action in progress`);
-      
-      // Instead of rejecting with 429, check if there's already a cached result we can return
-      // This prevents the client from getting stuck in an error state
-      const previousResults = Array.from(processedRequests.entries())
-        .filter(([key, data]) => {
-          return key.startsWith(`play-card-${id}-${player_id}-${card_index}`) &&
-                 Date.now() - data.timestamp < 10000;
-        });
-      
-      if (previousResults.length > 0) {
-        console.log(`Returning previous result instead of 429 error`);
-        const mostRecent = previousResults.reduce((latest, current) => {
-          return latest[1].timestamp > current[1].timestamp ? latest : current;
-        });
-        return res.status(200).json(mostRecent[1].result);
-      }
-      
-      // If no previous results found, send a special response that's easier to retry
-      return res.status(429).json({
-        status: 'retry',
-        error: 'Action in progress, please retry in a moment',
-        retryAfter: rateLimitMs - (Date.now() - activeTimestamp) // Tell client exactly how long to wait
-      });
-    }
-    
-    // Mark this request as active
-    activeRequests.set(recentKey, Date.now());
-    
-    console.log(`Processing card play: player ${player_id}, card index ${card_index}, game ${id}`);
-    
-    const lobby = await getLobby(id as string);
+    const lobby = await getLobby(gameId as string);
     if (!lobby) {
       return res.status(404).json({ status: 'error', error: 'Game not found' });
     }
@@ -222,9 +169,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`Checking if we should transition from round_over to jogando`);
       console.log(`Current round: ${gameState.current_round}, Cards per hand: ${gameState.cartas}`);
       
-      // If it's been at least 2000ms since the round ended, start a new round
+      // If it's been at least 1500ms since the round ended, start a new round
       const now = Date.now();
-      if (gameState.round_over_timestamp && now - gameState.round_over_timestamp >= 2000) {
+      if (gameState.round_over_timestamp && now - gameState.round_over_timestamp >= 1500) {
         console.log(`Starting next round after delay`);
         // Start the next round
         gameState.estado = 'jogando';
@@ -235,36 +182,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         gameState.cards_played_this_round = 0;
         gameState.cancelled_cards = []; // Clear cancelled cards for new round
         
-        // For multi-round hands within the same hand, the dealer rotation doesn't change
-        // First player should be the one after the dealer (consistent with the rules)
-        if (gameState.dealer !== undefined) {
-          const dealerIdx = gameState.players.indexOf(gameState.dealer);
-          
-          // Only include active (non-eliminated) players in the order
-          const activePlayers = gameState.players.filter(p => !gameState.eliminados.includes(p));
-          
-          // Find the first active player after the dealer
-          let firstActivePlayer = gameState.first_player;
-          
-          // Make sure the first player is still active
-          if (gameState.eliminados.includes(gameState.first_player || 0)) {
-            // Find the next active player after the dealer
-            for (let i = 1; i <= gameState.players.length; i++) {
-              const nextPlayerIdx = (dealerIdx + i) % gameState.players.length;
-              const nextPlayer = gameState.players[nextPlayerIdx];
-              if (!gameState.eliminados.includes(nextPlayer)) {
-                firstActivePlayer = nextPlayer;
-                break;
+        // For multi-round hands within the same hand, determine who starts the next round
+        const activePlayers = gameState.players.filter(p => !gameState.eliminados.includes(p));
+        let firstActivePlayer: number;
+        
+        // If there was a tie in the previous round, the tie winner starts the next round
+        if (gameState.tie_in_previous_round && gameState.last_round_winner) {
+          firstActivePlayer = gameState.last_round_winner;
+          console.log(`Tie in previous round - player ${firstActivePlayer} starts next round`);
+        } else if (gameState.last_round_winner) {
+          // Normal case - round winner starts the next round
+          firstActivePlayer = gameState.last_round_winner;
+          console.log(`Round winner ${firstActivePlayer} starts next round`);
+        } else {
+          // Fallback - use dealer/first_player logic
+          if (gameState.dealer !== undefined) {
+            const dealerIdx = gameState.players.indexOf(gameState.dealer);
+            firstActivePlayer = gameState.first_player || activePlayers[0];
+            
+            // Make sure the first player is still active
+            if (gameState.eliminados.includes(firstActivePlayer)) {
+              // Find the next active player after the dealer
+              for (let i = 1; i <= gameState.players.length; i++) {
+                const nextPlayerIdx = (dealerIdx + i) % gameState.players.length;
+                const nextPlayer = gameState.players[nextPlayerIdx];
+                if (!gameState.eliminados.includes(nextPlayer)) {
+                  firstActivePlayer = nextPlayer;
+                  break;
+                }
               }
             }
+          } else {
+            firstActivePlayer = activePlayers[0];
           }
-          
-          // Set up the play order with only active players, starting from the first active player
-          const firstActiveIdx = activePlayers.indexOf(firstActivePlayer || activePlayers[0]);
+          console.log(`Using fallback logic - player ${firstActivePlayer} starts next round`);
+        }
+        
+        // Set up the play order with only active players, starting from the determined first player
+        const firstActiveIdx = activePlayers.indexOf(firstActivePlayer);
+        if (firstActiveIdx !== -1) {
           gameState.ordem_jogada = [
             ...activePlayers.slice(firstActiveIdx),
             ...activePlayers.slice(0, firstActiveIdx)
           ];
+          gameState.current_player_idx = 0;
+        } else {
+          // Fallback if player not found in active players
+          gameState.ordem_jogada = activePlayers;
           gameState.current_player_idx = 0;
         }
         
@@ -631,7 +595,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // When returning a successful response, cache it
     const result = { status: 'success', game_state: gameState };
-    processedRequests.set(requestFingerprint, {
+    processedRequests.set(duplicateKey, {
       timestamp: Date.now(),
       result
     });
@@ -653,10 +617,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`Slow card play request: ${totalRequestTime}ms total for ${player_id} in game ${id}`);
     }
     
-    // Clear this request from active once processed (reduced to 1.5s for better responsiveness)
+    // Clear processed request after timeout
     setTimeout(() => {
-      activeRequests.delete(recentKey);
-    }, 1500);
+      processedRequests.delete(duplicateKey);
+    }, 5000);
     
     return res.status(200).json(result);
   } catch (error) {
