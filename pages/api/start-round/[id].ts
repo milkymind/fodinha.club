@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
+import { createHandRecord } from '../../../lib/gameTracking';
 
 const SUITS = ['♣', '♥', '♠', '♦'];
 const VALUES = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3'];
@@ -291,6 +292,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   
+  // Create hand record in tracking database (only for new hands)
+  if (gameState.estado === 'apostas' && gameState.current_round === 1) {
+    try {
+      const isMultiplierHand = false; // We don't know yet, will update after betting
+      await createHandRecord({
+        gameId: id as string,
+        handNumber: gameState.current_hand || 1,
+        cardsPerPlayer: gameState.cartas || 1,
+        dealerPlayerId: gameState.dealer || 1,
+        middleCard: gameState.carta_meio,
+        manilha: gameState.manilha || '',
+        totalBets: 0, // Will be updated after betting phase
+        isMultiplierHand,
+        multiplierValue: gameState.multiplicador || 1,
+      });
+    } catch (error) {
+      console.error('Failed to create hand tracking record:', error);
+      // Don't fail the request, just log the error
+    }
+  }
+
   // Update the lobby with the new game state
   lobby.gameState = gameState;
   await setLobby(lobby);
