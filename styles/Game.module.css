@@ -65,6 +65,12 @@
   background-color: #c82333;
 }
 
+.leaveButtonContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .gameInfo {
   display: flex;
   gap: 0.703125rem;
@@ -420,23 +426,7 @@
   font-size: 0.825rem;
 }
 
-.multiplicadorInfo {
-  color: #000;
-  font-weight: bold;
-  font-size: 0.9rem;
-  text-shadow: none;
-  margin-top: 0.375rem;
-}
 
-.multiplicadorValue {
-  background-color: rgba(255, 193, 7, 0.9);
-  color: #000000;
-  padding: 0.3rem 0.6rem;
-  border-radius: 3px;
-  margin-left: 0rem;
-  font-weight: bold;
-  font-size: 0.825rem;
-}
 
 .workaroundInfo {
   background-color: rgba(255, 193, 7, 0.9);
@@ -932,4 +922,46 @@
   margin: 0.75rem 0;
   transition: all 0.3s ease;
   width: 100%; /* Take full width of container */
-} 
+}
+
+/* Connection status and recovery */
+.connectionStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.connectionIndicator {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.connectionIndicator.good {
+  opacity: 1;
+}
+
+.connectionIndicator.poor {
+  opacity: 0.8;
+  animation: pulse 2s infinite;
+}
+
+.connectionIndicator.bad {
+  opacity: 1;
+  animation: pulse 1s infinite;
+}
+
+.recoveryButton {
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s;
+  animation: pulse 2s infinite;
+}
+
+.recoveryButton:hover {
+  background-color: #d97706;
+}

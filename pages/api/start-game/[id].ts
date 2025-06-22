@@ -6,8 +6,21 @@ const VALUES = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3'];
 
 function shuffle<T>(array: T[]): T[] {
   const result = [...array]; // Create a copy to avoid mutating the original
+  
+  // Use crypto.getRandomValues for truly random shuffling
+  const randomValues = new Uint32Array(result.length);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(randomValues);
+  } else {
+    // Fallback for environments without crypto API
+    for (let i = 0; i < randomValues.length; i++) {
+      randomValues[i] = Math.floor(Math.random() * 0xFFFFFFFF);
+    }
+  }
+  
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    // Use cryptographically secure random values
+    const j = Math.floor((randomValues[i] / 0xFFFFFFFF) * (i + 1));
     [result[i], result[j]] = [result[j], result[i]]; // Swap elements
   }
   return result;
@@ -45,9 +58,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ status: 'error', error: 'Lobby not found' });
     }
     
-    if (lobby.players.length < 2) {
-      console.error(`Not enough players in game ${id} - only ${lobby.players.length} player(s)`);
-      return res.status(400).json({ status: 'error', error: 'At least 2 players are required to start the game' });
+    if (!lobby.players || lobby.players.length < 2) {
+      console.error(`Not enough players in game ${id} - only ${lobby.players?.length || 0} player(s)`);
+      console.error(`Lobby details:`, {
+        hasPlayers: !!lobby.players,
+        playersArray: lobby.players,
+        gameStarted: lobby.gameStarted,
+        lastUpdated: lobby.lastUpdated
+      });
+      return res.status(400).json({ 
+        status: 'error', 
+        error: `At least 2 players are required to start the game. Currently: ${lobby.players?.length || 0} players`,
+        debug: {
+          playersCount: lobby.players?.length || 0,
+          players: lobby.players?.map(p => ({ id: p.id, name: p.name })) || []
+        }
+      });
     }
     
     // Mark the lobby as started
@@ -92,8 +118,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Show middle card to everyone, then randomly assign it to a player
       carta_meio = deck.shift();
       if (carta_meio) {
-        // Randomly assign this card to one of the players
-        middleCardAssignedTo = players[Math.floor(Math.random() * players.length)];
+        // Randomly assign this card to one of the players using crypto-secure randomization
+        const assignRandomValue = new Uint32Array(1);
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+          crypto.getRandomValues(assignRandomValue);
+        } else {
+          assignRandomValue[0] = Math.floor(Math.random() * 0xFFFFFFFF);
+        }
+        middleCardAssignedTo = players[Math.floor((assignRandomValue[0] / 0xFFFFFFFF) * players.length)];
         console.log(`Middle card workaround: ${carta_meio.value}${carta_meio.suit} shown to all, assigned to player ${middleCardAssignedTo}`);
       }
     } else {
@@ -128,8 +160,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // (since we'll remove cards as they're played)
     const original_hands = JSON.parse(JSON.stringify(hands));
     
-    // Select the first dealer (player 1 by default)
-    const dealer = players[0];
+    // Randomly select the first dealer using crypto-secure randomization
+    const dealerRandomValue = new Uint32Array(1);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(dealerRandomValue);
+    } else {
+      dealerRandomValue[0] = Math.floor(Math.random() * 0xFFFFFFFF);
+    }
+    const dealer = players[Math.floor((dealerRandomValue[0] / 0xFFFFFFFF) * players.length)];
     
     // In Fodinha, the first player is always the one after the dealer
     const dealerIndex = players.indexOf(dealer);
@@ -202,6 +240,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error(`Failed to save game state for game ${id}`);
       return res.status(500).json({ status: 'error', error: 'Failed to save game state' });
     }
+    
+    // Broadcast game start to all players via socket
+    try {
+      // @ts-ignore - NextJS doesn't have type definitions for socket.server.io
+      const io = res.socket?.server?.io;
+      if (io) {
+        console.log(`Broadcasting game start to all players in game ${id}`);
+        io.to(id).emit('game-state-update', { 
+          gameState,
+          timestamp: Date.now(),
+          version: Date.now(),
+          source: 'game-start',
+          immediate: true
+        });
+        
+        // Also emit a specific game-started event
+        io.to(id).emit('game-started', { 
+          gameId: id,
+          gameState,
+          timestamp: Date.now()
+        });
+        
+        console.log(`Successfully broadcasted game start to all players in game ${id}`);
+      } else {
+        console.warn('Socket.IO server not available for game start broadcast');
+      }
+    } catch (error) {
+      console.error('Error broadcasting game start:', error);
+    }
+    
+    // Small delay to ensure database write is fully committed before responding
+    // This prevents race conditions where clients poll before the save is complete
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     console.log(`Game ${id} successfully started`);
     

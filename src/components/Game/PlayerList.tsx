@@ -33,7 +33,12 @@ export const PlayerList: React.FC<PlayerListProps> = ({
   palpites,
   vitorias
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  // Get the appropriate dealer emoji based on language
+  const getDealerEmoji = () => {
+    return language === 'pt' ? <span style={{fontSize: '1.5em'}}>🦶</span> : <span style={{fontSize: '1.5em'}}>🎲</span>;
+  };
 
   // Helper function to check if a player is inactive
   const isPlayerInactive = (id: number): boolean => {
@@ -68,7 +73,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
           >
             <div className={styles.playerName}>
               {playerNames[id]}
-              {dealer === id && <span className={styles.dealerLabel}> 🎲</span>}
+              {dealer === id && <span className={styles.dealerLabel}> {getDealerEmoji()}</span>}
               {isPlayerInactive(id) && <span className={styles.inactiveLabel}> ⚠️ {t('inactive')}</span>}
             </div>
             <div className={styles.playerStats}>

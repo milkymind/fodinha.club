@@ -132,7 +132,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const gameState = lobby.gameState as GameState;
     if (!gameState) {
-      return res.status(404).json({ status: 'error', error: 'Game state not found' });
+      console.error(`Game state not found for game ${gameId}. Lobby exists but gameState is missing.`);
+      console.error(`Lobby details:`, { 
+        gameStarted: lobby.gameStarted, 
+        playersCount: lobby.players?.length || 0,
+        hasGameState: !!lobby.gameState 
+      });
+      return res.status(404).json({ status: 'error', error: 'Game state not found - game may not have started yet' });
     }
     
     // Game state validation
@@ -210,14 +216,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // @ts-ignore - NextJS doesn't have type definitions for socket.server.io
       const io = res.socket?.server?.io;
       if (io) {
-        console.log(`Emitting game state update to game ${gameId} via socket`);
+        console.log(`Emitting immediate game state update to game ${gameId}`);
+        
+        // Broadcast immediately to all players in the game
         io.to(gameId as string).emit('game-state-update', { 
           gameState,
-          timestamp: Date.now(),
-          version: Date.now(), // Add version for consistency
-          source: 'make-bet'
+          source: 'make-bet',
+          playerId: player_id,
+          immediate: true,
+          timestamp: Date.now()
         });
-        console.log(`Successfully emitted game state update for bet from player ${player_id}`);
+        
+        console.log(`Successfully emitted immediate game state update for bet from player ${player_id}`);
       } else {
         console.warn('Socket.IO server not available for game state emission');
       }

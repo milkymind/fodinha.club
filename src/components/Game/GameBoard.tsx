@@ -24,7 +24,6 @@ interface GameBoardProps {
   totalCards?: number;
   cancelledCards?: [number, string][]; // Backend-provided cancelled cards
   tieResolvedByTiebreaker?: boolean;
-  multiplicador?: number;
 }
 
 export const GameBoard = memo<GameBoardProps>(({
@@ -42,8 +41,7 @@ export const GameBoard = memo<GameBoardProps>(({
   currentRound,
   totalCards,
   cancelledCards = [],
-  tieResolvedByTiebreaker,
-  multiplicador = 1
+  tieResolvedByTiebreaker
 }) => {
   const { t } = useLanguage();
 
@@ -185,12 +183,6 @@ export const GameBoard = memo<GameBoardProps>(({
               <span>{t('manilha')}: </span>
               <span className={styles.manilhaValue}>{manilha}</span>
             </div>
-            {multiplicador > 1 && (
-              <div className={styles.multiplicadorInfo}>
-                <span>{t('multiplier')}: </span>
-                <span className={styles.multiplicadorValue}>{multiplicador}x</span>
-              </div>
-            )}
           </div>
         </div>
       )}

@@ -45,8 +45,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
     if (!lobby.gameState) {
-      console.log(`Game state for ${id} not found`);
-      return res.status(404).json({ status: 'error', error: 'Game state not found' });
+      console.log(`Game state for ${id} not found - lobby exists but game may not be started`);
+      console.log(`Lobby details:`, { 
+        gameStarted: lobby.gameStarted, 
+        playersCount: lobby.players?.length || 0,
+        hasGameState: !!lobby.gameState 
+      });
+      return res.status(404).json({ status: 'error', error: 'Game state not found - game may not have started yet' });
     }
     
     // Track player activity if this is a player request

@@ -106,7 +106,38 @@ export default function Home() {
     }
   };
 
-  const handleLeaveGame = () => {
+  const handleLeaveGame = async () => {
+    // If we're in a game/lobby, properly remove the player from the server
+    if (gameId && playerId) {
+      try {
+        console.log(`Player ${playerId} leaving game ${gameId}`);
+        
+        // Call the leave-game API to properly remove player from lobby
+        const response = await fetch(`/api/leave-game/${gameId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ player_id: playerId }),
+        });
+        
+        const data = await response.json();
+        if (data.status === 'success') {
+          console.log(`Successfully left game ${gameId}. Players remaining: ${data.players_remaining}`);
+        } else {
+          console.error('Failed to leave game:', data.error);
+        }
+      } catch (error) {
+        console.error('Error leaving game:', error);
+      }
+      
+      // Also emit socket leave event for real-time cleanup
+      if (socket) {
+        socket.emit('leave-game', { gameId, playerId });
+      }
+    }
+    
+    // Clear local state
     setGameId('');
     setPlayerId(null);
     setJoinGameId('');
@@ -140,18 +171,25 @@ export default function Home() {
         if (data.status === 'success') {
           // Successfully reset to lobby state
           setGameStarted(false);
-          // Refresh lobby info multiple times to ensure we get updated player list
+          // Post-game cleanup - only use forceCleanup for the first refresh, then regular refreshes
           const refreshLobby = async (attempts = 0) => {
             try {
-              const lobbyResponse = await fetch(`/api/lobby-info/${gameId}`);
+              // Only use forceCleanup for the very first refresh after returning from game
+              const useForceCleanup = attempts === 0;
+              const url = useForceCleanup 
+                ? `/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`
+                : `/api/lobby-info/${gameId}?playerId=${playerId}`;
+              
+              const lobbyResponse = await fetch(url);
               const lobbyData = await lobbyResponse.json();
               if (lobbyData.status === 'success') {
                 setLobbyInfo(lobbyData.lobby);
-                console.log(`Lobby refreshed (attempt ${attempts + 1}):`, lobbyData.lobby.players.length, 'players');
+                console.log(`Host lobby refreshed ${useForceCleanup ? 'with cleanup' : 'normally'} (attempt ${attempts + 1}):`, lobbyData.lobby.players.length, 'players');
               }
-              // Refresh again after a short delay to catch any players who left
+              // Only do 2 follow-up refreshes instead of 3, and with longer delays
               if (attempts < 2) {
-                setTimeout(() => refreshLobby(attempts + 1), 1000);
+                const delay = attempts === 0 ? 2000 : 10000; // 2s, then 10s
+                setTimeout(() => refreshLobby(attempts + 1), delay);
               }
             } catch (error) {
               console.error('Error refreshing lobby info:', error);
@@ -170,18 +208,25 @@ export default function Home() {
       // Non-host: Just update local state (triggered by socket event)
       console.log('Non-host player returning to lobby via socket event');
       setGameStarted(false);
-      // Refresh lobby info multiple times to ensure we get updated player list
+      // Post-game cleanup - only use forceCleanup for the first refresh, then regular refreshes
       const refreshLobby = async (attempts = 0) => {
         try {
-          const lobbyResponse = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
+          // Only use forceCleanup for the very first refresh after returning from game
+          const useForceCleanup = attempts === 0;
+          const url = useForceCleanup 
+            ? `/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`
+            : `/api/lobby-info/${gameId}?playerId=${playerId}`;
+          
+          const lobbyResponse = await fetch(url);
           const lobbyData = await lobbyResponse.json();
           if (lobbyData.status === 'success') {
             setLobbyInfo(lobbyData.lobby);
-            console.log(`Non-host lobby refreshed (attempt ${attempts + 1}):`, lobbyData.lobby.players.length, 'players');
+            console.log(`Non-host lobby refreshed ${useForceCleanup ? 'with cleanup' : 'normally'} (attempt ${attempts + 1}):`, lobbyData.lobby.players.length, 'players');
           }
-          // Refresh again after a short delay to catch any players who left
+          // Only do 2 follow-up refreshes instead of 3, and with longer delays
           if (attempts < 2) {
-            setTimeout(() => refreshLobby(attempts + 1), 1000);
+            const delay = attempts === 0 ? 2000 : 10000; // 2s, then 10s
+            setTimeout(() => refreshLobby(attempts + 1), delay);
           }
         } catch (error) {
           console.error('Error refreshing lobby info:', error);
@@ -209,7 +254,7 @@ export default function Home() {
         }
       };
       poll();
-      pollingRef.current = setInterval(poll, 500); // Poll every 500ms for maximum responsiveness
+              pollingRef.current = setInterval(poll, 3000); // Poll every 3 seconds to reduce server load
       return () => {
         if (pollingRef.current) clearInterval(pollingRef.current);
       };
@@ -245,8 +290,8 @@ export default function Home() {
 
       const handlePlayerDisconnected = (data: any) => {
         console.log('Player disconnected:', data);
-        // Trigger immediate lobby refresh with force cleanup
-        fetch(`/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`)
+        // Trigger lobby refresh (no force cleanup for normal disconnects)
+        fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`)
           .then(response => response.json())
           .then(lobbyData => {
             if (lobbyData.status === 'success') {
@@ -273,28 +318,79 @@ export default function Home() {
 
       const handleForceLobbyRefresh = (data: any) => {
         console.log('Force lobby refresh triggered:', data);
-        // Immediate aggressive refresh with force cleanup
-        fetch(`/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`)
-          .then(response => response.json())
-          .then(lobbyData => {
-            if (lobbyData.status === 'success') {
-              setLobbyInfo(lobbyData.lobby);
-              console.log('Force refreshed lobby:', lobbyData.lobby.players.length, 'players');
-            }
-          })
-          .catch(error => console.error('Error in force lobby refresh:', error));
+        
+        // For immediate between-games cleanup, refresh multiple times with shorter intervals
+        if (data.immediate || data.reason === 'player_disconnect_lobby') {
+          console.log('Immediate between-games cleanup detected - using aggressive refresh');
+          
+          // First immediate refresh with forceCleanup for post-game cleanup
+          fetch(`/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`)
+            .then(response => response.json())
+            .then(lobbyData => {
+              if (lobbyData.status === 'success') {
+                setLobbyInfo(lobbyData.lobby);
+                console.log('Immediate refreshed lobby:', lobbyData.lobby.players.length, 'players');
+              }
+            })
+            .catch(error => console.error('Error in immediate lobby refresh:', error));
+          
+          // Follow-up refresh WITHOUT forceCleanup after 3 seconds
+          setTimeout(() => {
+            fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`)
+              .then(response => response.json())
+              .then(lobbyData => {
+                if (lobbyData.status === 'success') {
+                  setLobbyInfo(lobbyData.lobby);
+                  console.log('Follow-up refreshed lobby:', lobbyData.lobby.players.length, 'players');
+                }
+              })
+              .catch(error => console.error('Error in follow-up lobby refresh:', error));
+          }, 3000);
+        } else {
+          // Regular refresh (no force cleanup for regular refreshes)
+          fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`)
+            .then(response => response.json())
+            .then(lobbyData => {
+              if (lobbyData.status === 'success') {
+                setLobbyInfo(lobbyData.lobby);
+                console.log('Regular refreshed lobby:', lobbyData.lobby.players.length, 'players');
+              }
+            })
+            .catch(error => console.error('Error in regular lobby refresh:', error));
+        }
+      };
+
+      // Handle game start events for immediate transition
+      const handleGameStarted = (data: any) => {
+        console.log('Received game-started event in Home component:', data);
+        if (data.gameId === gameId) {
+          console.log('Game started detected via socket, transitioning immediately');
+          setGameStarted(true);
+        }
+      };
+
+      const handleGameStateUpdate = (data: any) => {
+        console.log('Received game-state-update in Home component:', data);
+        if (data.source === 'game-start' && data.immediate) {
+          console.log('Game start detected via game-state-update, transitioning immediately');
+          setGameStarted(true);
+        }
       };
 
       socket.on('lobby-updated', handleLobbyUpdate);
       socket.on('player-disconnected', handlePlayerDisconnected);
       socket.on('player-left', handlePlayerLeft);
       socket.on('force-lobby-refresh', handleForceLobbyRefresh);
+      socket.on('game-started', handleGameStarted);
+      socket.on('game-state-update', handleGameStateUpdate);
       
       return () => {
         socket.off('lobby-updated', handleLobbyUpdate);
         socket.off('player-disconnected', handlePlayerDisconnected);
         socket.off('player-left', handlePlayerLeft);
         socket.off('force-lobby-refresh', handleForceLobbyRefresh);
+        socket.off('game-started', handleGameStarted);
+        socket.off('game-state-update', handleGameStateUpdate);
         // Leave the game room when component unmounts or dependencies change
         socket.emit('leave-game', { gameId, playerId });
       };
@@ -304,36 +400,50 @@ export default function Home() {
   // Additional polling for players in game to detect lobby return
   useEffect(() => {
     if (gameId && playerId && gameStarted) {
+      let consecutiveLobbyDetections = 0; // Track consecutive detections to avoid false positives
+      
       const pollForLobbyReturn = async () => {
         try {
           const response = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
           const data = await response.json();
+          
           if (data.status === 'success' && !data.lobby.gameStarted) {
-            // Game has been returned to lobby
-            console.log('Detected lobby return via polling - returning to lobby');
-            setGameStarted(false);
-            setLobbyInfo(data.lobby);
-            // Trigger additional refresh to catch any players who left
-            setTimeout(async () => {
-              try {
-                const refreshResponse = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}`);
-                const refreshData = await refreshResponse.json();
-                if (refreshData.status === 'success') {
-                  setLobbyInfo(refreshData.lobby);
-                  console.log('Additional lobby refresh after return:', refreshData.lobby.players.length, 'players');
+            consecutiveLobbyDetections++;
+            console.log(`Detected potential lobby return (${consecutiveLobbyDetections}/2) - gameStarted: false`);
+            
+            // Only return to lobby after 2 consecutive detections to avoid race conditions
+            // This prevents false positives during game initialization
+            if (consecutiveLobbyDetections >= 2) {
+              console.log('Confirmed lobby return via polling - returning to lobby');
+              setGameStarted(false);
+              setLobbyInfo(data.lobby);
+              
+              // Trigger cleanup to catch any players who left during the game
+              setTimeout(async () => {
+                try {
+                  const refreshResponse = await fetch(`/api/lobby-info/${gameId}?playerId=${playerId}&forceCleanup=true`);
+                  const refreshData = await refreshResponse.json();
+                  if (refreshData.status === 'success') {
+                    setLobbyInfo(refreshData.lobby);
+                    console.log('Lobby cleanup after confirmed return:', refreshData.lobby.players.length, 'players');
+                  }
+                } catch (error) {
+                  console.error('Error in lobby cleanup after return:', error);
                 }
-              } catch (error) {
-                console.error('Error in additional lobby refresh:', error);
-              }
-            }, 2000);
+              }, 2000); // Increased delay to allow game state to stabilize
+            }
+          } else {
+            // Reset counter if game is still active
+            consecutiveLobbyDetections = 0;
           }
         } catch (e) {
-          // ignore
+          // Reset counter on error
+          consecutiveLobbyDetections = 0;
         }
       };
       
-      // Poll every 15 seconds while in game to detect lobby return
-      const pollInterval = setInterval(pollForLobbyReturn, 15000);
+      // Poll every 20 seconds while in game to detect lobby return (reduced frequency)
+      const pollInterval = setInterval(pollForLobbyReturn, 20000);
       return () => clearInterval(pollInterval);
     }
   }, [gameId, playerId, gameStarted]);
