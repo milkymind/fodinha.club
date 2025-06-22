@@ -7,8 +7,21 @@ const VALUES = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3'];
 
 function shuffle<T>(array: T[]): T[] {
   const newArray = [...array];
+  
+  // Use crypto.getRandomValues for truly random shuffling
+  const randomValues = new Uint32Array(newArray.length);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(randomValues);
+  } else {
+    // Fallback for environments without crypto API
+    for (let i = 0; i < randomValues.length; i++) {
+      randomValues[i] = Math.floor(Math.random() * 0xFFFFFFFF);
+    }
+  }
+  
   for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    // Use cryptographically secure random values
+    const j = Math.floor((randomValues[i] / 0xFFFFFFFF) * (i + 1));
     [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
   return newArray;
@@ -77,8 +90,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   // Update dealer for next round (rotate)
   if (gameState.dealer === undefined) {
-    // First round, pick a random dealer
-    gameState.dealer = gameState.players[Math.floor(Math.random() * gameState.players.length)];
+    // First round, pick a random dealer using crypto-secure randomization
+    const dealerRandomValue = new Uint32Array(1);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(dealerRandomValue);
+    } else {
+      dealerRandomValue[0] = Math.floor(Math.random() * 0xFFFFFFFF);
+    }
+    gameState.dealer = gameState.players[Math.floor((dealerRandomValue[0] / 0xFFFFFFFF) * gameState.players.length)];
   } else {
     // Rotate dealer
     const currentDealerIdx = gameState.players.indexOf(gameState.dealer);
@@ -182,8 +201,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gameState.carta_meio = middleCard.value + middleCard.suit;
       gameState.manilha = getNextManilha(gameState.carta_meio);
       
-      // Randomly assign this card to one of the active players
-      middleCardAssignedTo = activePlayers[Math.floor(Math.random() * activePlayers.length)];
+      // Randomly assign this card to one of the active players using crypto-secure randomization
+      const assignRandomValue = new Uint32Array(1);
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        crypto.getRandomValues(assignRandomValue);
+      } else {
+        assignRandomValue[0] = Math.floor(Math.random() * 0xFFFFFFFF);
+      }
+      middleCardAssignedTo = activePlayers[Math.floor((assignRandomValue[0] / 0xFFFFFFFF) * activePlayers.length)];
       console.log(`Middle card workaround: ${gameState.carta_meio} shown to all, assigned to player ${middleCardAssignedTo}`);
     }
   } else {

@@ -44,14 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       activePlayersCache.get(id as string)!.set(playerId, Date.now());
     }
 
-    // If this is a lobby (not an active game), clean up disconnected players
+    // CONSERVATIVE APPROACH: Only clean up players in very specific scenarios
+    // For lobby waiting screen, players should ONLY be removed if:
+    // 1. They explicitly called leave-game API
+    // 2. Their socket disconnected AND they haven't made a request in a LONG time (5+ minutes)
+    // 3. It's a post-game cleanup (between games state) with confirmed disconnection
+    
     let updatedLobby = lobby;
     if (!lobby.gameStarted && lobby.players && lobby.players.length > 0) {
       const now = Date.now();
       const activePlayersInLobby = activePlayersCache.get(id as string) || new Map();
-      
-      // Force more aggressive cleanup if we detect potential issues
-      const hasStaleData = lobby.players.length > (activePlayersInLobby.size + 1); // +1 for current player
       
       // Get socket.io server to check connected players
       const io = (res.socket as any)?.server?.io;
@@ -71,39 +73,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       
-      // Only clean up if we haven't cleaned up in the last 1 second (maximum responsiveness)
-      // OR if we detect stale data, clean up immediately
-      // OR if forceCleanup is requested, bypass all delays
-      const cleanupThreshold = 1 * 1000; // 1 second
-      const shouldCleanup = forceCleanup || hasStaleData || !lobby.lastPlayerCleanup || 
-        (now - new Date(lobby.lastPlayerCleanup).getTime()) > cleanupThreshold;
+      // Check if this is post-game cleanup (between games state)
+      const wasPreviouslyInGame = lobby.gameState !== null && lobby.gameState !== undefined;
+      const isInBetweenGamesState = wasPreviouslyInGame && !lobby.gameStarted;
+      
+      // ONLY clean up in these very specific cases:
+      let shouldCleanup = false;
+      let cleanupReason = '';
+      
+      // Check if this is very recent post-game cleanup (within 30 seconds of returning to lobby)
+      const lastCleanupTime = lobby.lastPlayerCleanup ? new Date(lobby.lastPlayerCleanup).getTime() : 0;
+      const timeSinceLastCleanup = now - lastCleanupTime;
+      const isVeryRecentPostGame = timeSinceLastCleanup < 30 * 1000; // 30 seconds
+      
+      if (isInBetweenGamesState && forceCleanup && !isVeryRecentPostGame) {
+        // Post-game cleanup with force flag - but NOT if we just did cleanup recently
+        shouldCleanup = true;
+        cleanupReason = 'POST_GAME_FORCE';
+      } else if (forceCleanup && !isVeryRecentPostGame && lobby.players.length > (connectedPlayerIds.size + activePlayersInLobby.size + 1)) {
+        // Force cleanup requested AND we have way more players than active connections
+        // But NOT if we just returned to lobby recently (give players time to reconnect)
+        // And require at least 2 more players than active to avoid false positives
+        shouldCleanup = true;
+        cleanupReason = 'FORCE_STALE_DATA';
+      }
       
       if (shouldCleanup) {
-        // Filter out players who haven't been seen recently and aren't connected
         const originalPlayerCount = lobby.players.length;
-        const recentActivityThreshold = 6 * 1000; // 6 seconds for API activity (very aggressive)
         
+        // Very conservative cleanup - only remove players who are CLEARLY disconnected
         const activePlayers = lobby.players.filter((player: any) => {
-          // Keep the player if:
-          // 1. They're the current requesting player (always keep)
+          // ALWAYS keep the current requesting player
           if (player.id === playerId) return true;
           
-          // 2. They've made an API call recently (within 45 seconds)
+          // Keep if they're socket connected (most reliable indicator)
+          if (connectedPlayerIds.has(player.id)) return true;
+          
+          // Keep if they've made ANY request recently (even just polling)
           const lastSeen = activePlayersInLobby.get(player.id);
-          const hasRecentActivity = lastSeen && (now - lastSeen) < recentActivityThreshold;
+          if (lastSeen) {
+            const timeSinceLastSeen = now - lastSeen;
+            
+            // For post-game cleanup, be a bit more strict (2 minutes)
+            if (isInBetweenGamesState && timeSinceLastSeen < 2 * 60 * 1000) return true;
+            
+            // For normal lobby, be very lenient (5 minutes)
+            if (!isInBetweenGamesState && timeSinceLastSeen < 5 * 60 * 1000) return true;
+          }
           
-          // 3. They're connected via socket (real-time check)
-          const isSocketConnected = connectedPlayerIds.has(player.id);
-          
-          // Keep player if they have recent activity OR are socket connected
-          return hasRecentActivity || isSocketConnected;
+          // If we get here, the player has:
+          // - No socket connection AND
+          // - No recent API activity (5+ minutes for normal lobby, 2+ minutes for post-game)
+          console.log(`Player ${player.id} (${player.name}) marked for removal: no socket + no activity for ${lastSeen ? Math.round((now - lastSeen) / 1000) : 'unknown'} seconds`);
+          return false;
         });
         
         // Only update if players were actually removed
         if (activePlayers.length !== originalPlayerCount) {
           const removedCount = originalPlayerCount - activePlayers.length;
-          const cleanupType = forceCleanup ? 'FORCE' : hasStaleData ? 'STALE' : 'REGULAR';
-          console.log(`Lobby ${id}: ${cleanupType} cleanup - removed ${removedCount} players (${originalPlayerCount} -> ${activePlayers.length})`);
+          console.log(`Lobby ${id}: ${cleanupReason} cleanup - removed ${removedCount} players (${originalPlayerCount} -> ${activePlayers.length})`);
           
           updatedLobby = {
             ...lobby,
@@ -121,12 +149,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               gameId: id,
               players: activePlayers,
               playersRemoved: removedCount,
-              reason: 'player_disconnect',
-              cleanupType
+              reason: 'confirmed_disconnect',
+              cleanupType: cleanupReason
             });
-            console.log(`Notified ${connectedPlayerIds.size} connected players about ${cleanupType} lobby update`);
+            console.log(`Notified ${connectedPlayerIds.size} connected players about ${cleanupReason} lobby update`);
           }
         } else {
+          console.log(`Lobby ${id}: ${cleanupReason} cleanup requested but no players needed removal`);
           // Just update the cleanup timestamp
           updatedLobby = {
             ...lobby,
@@ -134,6 +163,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           };
           await setLobby(updatedLobby);
         }
+      } else {
+        const skipReason = isVeryRecentPostGame ? 'recent post-game cleanup' : 'insufficient criteria';
+        console.log(`Lobby ${id}: Skipping cleanup (${skipReason}) - ${lobby.players.length} players, ${connectedPlayerIds.size} connected, ${activePlayersInLobby.size} active, forceCleanup=${forceCleanup}`);
       }
     }
     

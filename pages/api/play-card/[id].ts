@@ -311,30 +311,106 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const remainingCards: [number, string][] = [];
       const cancelledCards: [number, string][] = [];
       
-      for (const [strength, cards] of Array.from(cardsByStrength.entries())) {
-        if (cards.length === 1) {
-          // Only one card with this strength, it remains
-          remainingCards.push(cards[0]);
-        } else if (cards.length === 2) {
-          // Two cards with same strength - they cancel each other out
-          console.log(`Cancelling pair of cards with strength ${strength}:`, cards);
-          cancelledCards.push(...cards);
+      // Check if this is the final round - affects cancellation logic
+      const isLastRoundOfHand = gameState.current_round === gameState.cartas;
+      
+      if (isLastRoundOfHand) {
+        // Final round special logic: Cancel pairs in order of play, but leave the last pair for tiebreaker
+        console.log('Final round - using special cancellation logic');
+        
+        // Find all pairs (groups with exactly 2 cards)
+        const pairs: [number, [number, string][]][] = [];
+        const nonPairs: [number, string][] = [];
+        
+        for (const [strength, cards] of Array.from(cardsByStrength.entries())) {
+          if (cards.length === 1) {
+            nonPairs.push(cards[0]);
+          } else if (cards.length === 2) {
+            pairs.push([strength, cards]);
+          } else {
+            // More than 2 cards - cancel in pairs as normal, leave remainder
+            const numPairs = Math.floor(cards.length / 2);
+            const numCancelled = numPairs * 2;
+            
+            for (let i = 0; i < numCancelled; i++) {
+              cancelledCards.push(cards[i]);
+            }
+            for (let i = numCancelled; i < cards.length; i++) {
+              remainingCards.push(cards[i]);
+            }
+          }
+        }
+        
+        // Sort pairs by the position of their SECOND card in the play order (mesa)
+        // This determines which pair was "completed last"
+        pairs.sort(([strengthA, cardsA], [strengthB, cardsB]) => {
+          // For each pair, find the position of the card that was played later
+          const positionsA = cardsA.map(([pid, card]) => 
+            gameState.mesa.findIndex(([p, c]) => p === pid && c === card)
+          );
+          const positionsB = cardsB.map(([pid, card]) => 
+            gameState.mesa.findIndex(([p, c]) => p === pid && c === card)
+          );
+          
+          // The "completion position" is the maximum position (last card played) for each pair
+          const completionPositionA = Math.max(...positionsA);
+          const completionPositionB = Math.max(...positionsB);
+          
+          return completionPositionA - completionPositionB;
+        });
+        
+        console.log('Pairs in play order:', pairs.map(([strength, cards]) => ({strength, cards})));
+        
+        if (pairs.length === 0) {
+          // No pairs, just add all non-pairs to remaining
+          remainingCards.push(...nonPairs);
+        } else if (pairs.length === 1) {
+          // Only one pair - don't cancel it, use for tiebreaker
+          const [strength, cards] = pairs[0];
+          console.log(`Only one pair (strength ${strength}) - keeping for tiebreaker:`, cards);
+          remainingCards.push(...cards);
+          remainingCards.push(...nonPairs);
         } else {
-          // More than 2 cards with same strength - cancel in pairs, leaving remainder
-          const numPairs = Math.floor(cards.length / 2);
-          const numCancelled = numPairs * 2;
-          const numRemaining = cards.length - numCancelled;
-          
-          console.log(`Cancelling ${numCancelled} cards (${numPairs} pairs) with strength ${strength}, ${numRemaining} remaining:`, cards);
-          
-          // Cancel pairs (first numCancelled cards)
-          for (let i = 0; i < numCancelled; i++) {
-            cancelledCards.push(cards[i]);
+          // Multiple pairs - cancel all except the last one
+          for (let i = 0; i < pairs.length - 1; i++) {
+            const [strength, cards] = pairs[i];
+            console.log(`Cancelling pair ${i + 1} (strength ${strength}):`, cards);
+            cancelledCards.push(...cards);
           }
           
-          // Add remaining cards that weren't cancelled
-          for (let i = numCancelled; i < cards.length; i++) {
-            remainingCards.push(cards[i]);
+          // Keep the last pair for tiebreaker
+          const [lastStrength, lastCards] = pairs[pairs.length - 1];
+          console.log(`Keeping last pair (strength ${lastStrength}) for tiebreaker:`, lastCards);
+          remainingCards.push(...lastCards);
+          remainingCards.push(...nonPairs);
+        }
+      } else {
+        // Normal cancellation logic for non-final rounds
+        for (const [strength, cards] of Array.from(cardsByStrength.entries())) {
+          if (cards.length === 1) {
+            // Only one card with this strength, it remains
+            remainingCards.push(cards[0]);
+          } else if (cards.length === 2) {
+            // Two cards with same strength - they cancel each other out
+            console.log(`Cancelling pair of cards with strength ${strength}:`, cards);
+            cancelledCards.push(...cards);
+          } else {
+            // More than 2 cards with same strength - cancel in pairs, leaving remainder
+            const numPairs = Math.floor(cards.length / 2);
+            const numCancelled = numPairs * 2;
+            const numRemaining = cards.length - numCancelled;
+            
+            console.log(`Cancelling ${numCancelled} cards (${numPairs} pairs) with strength ${strength}, ${numRemaining} remaining:`, cards);
+            
+            // Cancel pairs (first numCancelled cards)
+            for (let i = 0; i < numCancelled; i++) {
+              cancelledCards.push(cards[i]);
+            }
+            
+            // Add remaining cards that weren't cancelled
+            for (let i = numCancelled; i < cards.length; i++) {
+              remainingCards.push(cards[i]);
+            }
           }
         }
       }
@@ -352,21 +428,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (remainingCards.length === 0) {
         // All cards cancelled out - this is a true tie
         console.log('All cards cancelled out - true tie!');
-        isTie = true;
         
         // Check if this is the last round of the entire hand
         const isLastRoundOfHand = gameState.current_round === gameState.cartas;
         
         if (isLastRoundOfHand) {
           // In the final round, we must determine a winner using suit tiebreaker
-          // Use all the cancelled cards for suit comparison
-          console.log('Final round - using suit tiebreaker on all cancelled cards');
+          // Use the highest strength cancelled cards for suit comparison
+          console.log('Final round - using suit tiebreaker on highest strength cancelled cards');
+          
+          // Find the highest strength among cancelled cards
+          let highestCancelledStrength = -1;
+          const cancelledByStrength = new Map();
+          
+          for (const [pid, cardPlayed] of cancelledCards) {
+            const strength = getCardStrength(cardPlayed, gameState.manilha);
+            
+            if (!cancelledByStrength.has(strength)) {
+              cancelledByStrength.set(strength, []);
+            }
+            cancelledByStrength.get(strength).push([pid, cardPlayed]);
+            
+            if (strength > highestCancelledStrength) {
+              highestCancelledStrength = strength;
+            }
+          }
+          
+          // Use the highest strength cancelled cards for suit tiebreaker
+          const highestCancelledCards = cancelledByStrength.get(highestCancelledStrength) || [];
+          console.log(`Using highest strength cancelled cards (strength ${highestCancelledStrength}) for tiebreaker:`, highestCancelledCards);
+          
           let highestSuit = -1;
           let suitWinner = null;
           
-          for (const [pid, cardPlayed] of cancelledCards) {
+          for (const [pid, cardPlayed] of highestCancelledCards) {
             const suit = getCardSuit(cardPlayed);
             const suitValue = ORDEM_NAIPE_DESEMPATE[suit as keyof typeof ORDEM_NAIPE_DESEMPATE] || 0;
+            
+            console.log(`Player ${pid} card ${cardPlayed}: suit ${suit} = ${suitValue}`);
             
             if (suitValue > highestSuit) {
               highestSuit = suitValue;
@@ -399,16 +498,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           winner = lastPlayerId;
           gameState.tie_in_previous_round = true;
           gameState.winning_card_played_by = undefined;
+          isTie = true;
         }
-      } else if (remainingCards.length === 1) {
-        // Clear winner
-        winner = remainingCards[0][0];
-        console.log(`Clear winner: player ${winner} with card ${remainingCards[0][1]}`);
-        gameState.tie_in_previous_round = false;
-        gameState.tie_resolved_by_tiebreaker = false;
-        gameState.winning_card_played_by = winner;
       } else {
-        // Multiple cards remain - find the highest strength among remaining cards
+        // Find the highest strength among remaining cards
         let highestStrength = -1;
         let winners: [number, string][] = [];
         
@@ -425,17 +518,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         if (winners.length === 1) {
           winner = winners[0][0];
-          console.log(`Winner among remaining cards: player ${winner}`);
+          console.log(`Clear winner: player ${winner} with card ${winners[0][1]}`);
           gameState.tie_in_previous_round = false;
           gameState.tie_resolved_by_tiebreaker = false;
           gameState.winning_card_played_by = winner;
         } else {
-          // Multiple winners among remaining cards - use suit tiebreaker
+          // Multiple winners with same strength - use suit tiebreaker
           const isLastRoundOfHand = gameState.current_round === gameState.cartas;
           
           if (isLastRoundOfHand) {
             // Final round - break tie using suit order
-            console.log('Breaking tie among remaining cards using suits');
+            console.log('Final round - breaking tie among remaining cards using suits');
             let highestSuit = -1;
             let suitWinner = null;
             
@@ -453,16 +546,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             
             if (suitWinner) {
               winner = suitWinner;
-              console.log(`Tie broken by suit: winner is player ${winner} with suit value ${highestSuit}`);
+              console.log(`Final round tie broken by suit: winner is player ${winner} with suit value ${highestSuit}`);
               gameState.tie_resolved_by_tiebreaker = true;
               gameState.winning_card_played_by = winner;
+              isTie = false;
             } else {
               // Fallback to last player rule if suit comparison fails
               const lastPlayerId = gameState.mesa[gameState.mesa.length - 1][0];
               winner = lastPlayerId;
-              console.log(`Fallback: tie broken by last player rule: player ${winner}`);
+              console.log(`Final round tie broken by last player rule: player ${winner}`);
               gameState.tie_resolved_by_tiebreaker = true;
               gameState.winning_card_played_by = winner;
+              isTie = false;
             }
           } else {
             // Not final round - this becomes a tie

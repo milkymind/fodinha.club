@@ -6,7 +6,6 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',     // Clerk sign in pages
   '/sign-up(.*)',     // Clerk sign up pages
   '/api/socket(.*)',  // Socket.IO endpoints - needed for real-time game features
-  '/api/socket-io',   // Socket.IO initialization
   '/api/health',      // Health check endpoint
   '/api/github-webhook', // GitHub webhook (if needed)
   '/api/create-game',     // Creating games - allow guests

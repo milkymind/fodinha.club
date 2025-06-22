@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import styles from '../../styles/Game.module.css';
 
 interface DemoGameProps {
@@ -30,6 +31,13 @@ interface DemoGameState {
 }
 
 export default function DemoGame({ gameId, playerId, onLeaveGame }: DemoGameProps) {
+  const { language } = useLanguage();
+  
+  // Get the appropriate dealer emoji based on language
+  const getDealerEmoji = () => {
+    return language === 'pt' ? <span style={{fontSize: '1.5em'}}>🦶</span> : <span style={{fontSize: '1.5em'}}>🎲</span>;
+  };
+
   const [gameState, setGameState] = useState<DemoGameState>({
     players: [1, 2, 3],
     player_names: { 1: 'You', 2: 'Alice', 3: 'Bob' },
@@ -211,7 +219,7 @@ export default function DemoGame({ gameId, playerId, onLeaveGame }: DemoGameProp
             >
               <div className={styles.playerName}>
                 {gameState.player_names[id]} {id === playerId ? '(You)' : ''}
-                {gameState.dealer === id && <span className={styles.dealerLabel}> 🎲</span>}
+                {gameState.dealer === id && <span className={styles.dealerLabel}> {getDealerEmoji()}</span>}
               </div>
               <div className={styles.playerStats}>
                 <div className={styles.playerLives}>

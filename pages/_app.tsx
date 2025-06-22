@@ -28,7 +28,7 @@ export default function App({ Component, pageProps }: AppProps) {
         
         // Connect to the socket server with stable reconnection settings
         const socketConnection = io({
-          path: '/api/socket-io',
+          path: '/api/socket',
           addTrailingSlash: false,
           reconnection: true,
           reconnectionAttempts: 3, // Reduced attempts to prevent spam

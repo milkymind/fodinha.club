@@ -60,22 +60,22 @@ interface GameState {
 
 export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }: GameProps) {
   const socket = useContext(SocketContext);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   // Debug: Check if t function is working (removed to reduce console spam)
   // console.log('Translation test:', t('your_turn_bet'));
   
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [gameStatus, setGameStatus] = useState<string>('');
-  const [waitingMsg, setWaitingMsg] = useState<string>('');
+  const [gameStatusKey, setGameStatusKey] = useState<string>('');
+  const [gameStatusParams, setGameStatusParams] = useState<Record<string, string | number>>({});
+  const [waitingMsgKey, setWaitingMsgKey] = useState<string>('');
+  const [waitingMsgParams, setWaitingMsgParams] = useState<Record<string, string | number>>({});
   const [lastPlayedCard, setLastPlayedCard] = useState<{playerId: number, card: string} | null>(null);
-  const [winnerMessage, setWinnerMessage] = useState<string | null>(null);
   const [prevRoundWinner, setPrevRoundWinner] = useState<number | null>(null);
   const [roundEndMessage, setRoundEndMessage] = useState<string | null>(null);
   const [prevRound, setPrevRound] = useState<number | null>(null);
   const [prevHand, setPrevHand] = useState<number | null>(null);
   const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
-  const [lastWinnerMessageTime, setLastWinnerMessageTime] = useState<number>(0);
   const [notificationType, setNotificationType] = useState<'turn' | 'waiting' | 'gameState' | 'nextHand' | ''>('');
   const [lastSocketActivity, setLastSocketActivity] = useState<number>(Date.now());
   const [roundTransitionActive, setRoundTransitionActive] = useState<boolean>(false);
@@ -101,6 +101,10 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
   
   // Socket room join tracking
   const [hasJoinedRoom, setHasJoinedRoom] = useState<boolean>(false);
+  
+  // Connection quality and recovery tracking
+  const [connectionQuality, setConnectionQuality] = useState<'good' | 'poor' | 'bad'>('good');
+  const [showRecoveryButton, setShowRecoveryButton] = useState<boolean>(false);
   
   // Use a ref to track if we're already attempting to reconnect
   const isReconnecting = useRef<boolean>(false);
@@ -279,6 +283,29 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
 
     const onHeartbeat = (data: { timestamp: number }) => {
       setLastSocketActivity(data.timestamp);
+      
+      // Update connection quality based on socket activity
+      const now = Date.now();
+      const timeSinceActivity = now - data.timestamp;
+      
+      // Be more lenient during active gameplay to avoid false alarms
+      const isActiveGameplay = gameState?.estado === 'apostas' || 
+                               gameState?.estado === 'jogando' || 
+                               gameState?.estado === 'round_over';
+      
+      const goodThreshold = isActiveGameplay ? 10000 : 5000;    // 10s vs 5s
+      const poorThreshold = isActiveGameplay ? 30000 : 15000;   // 30s vs 15s
+      
+      if (timeSinceActivity < goodThreshold) {
+        setConnectionQuality('good');
+        setShowRecoveryButton(false);
+      } else if (timeSinceActivity < poorThreshold) {
+        setConnectionQuality('poor');
+        setShowRecoveryButton(false);
+      } else {
+        setConnectionQuality('bad');
+        setShowRecoveryButton(true);
+      }
     };
 
     const onReconnect = (attemptNumber: number) => {
@@ -314,7 +341,17 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
       
       // Version checking to prevent processing old states
       const newVersion = data.version || Date.now();
-      if (newVersion <= stateVersion && !data.immediate && !data.source) {
+      
+      // Allow forced updates and recovery updates to bypass version checking
+      const isForceUpdate = data.force || data.recovery || data.immediate;
+      
+      // During normal gameplay (apostas, jogando, round_over), be less strict about versions
+      // to allow fast transitions
+      const isNormalGameplay = gameState?.estado === 'apostas' || 
+                               gameState?.estado === 'jogando' || 
+                               gameState?.estado === 'round_over';
+      
+      if (newVersion <= stateVersion && !isForceUpdate && !data.source && !isNormalGameplay) {
         console.log('Ignoring outdated state update:', newVersion, 'current:', stateVersion);
         return;
       }
@@ -378,41 +415,29 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
           }
         }
         
-        // Detect winner announcements
-        if (gameState.estado !== 'terminado' && newGameState.estado === 'terminado') {
-          // Game has ended
-          const winners = newGameState.players.filter((id: number) => !newGameState.eliminados?.includes(id));
-          if (winners.length === 1) {
-            const winnerName = newGameState.player_names[winners[0]] || `Player ${winners[0]}`;
-            setWinnerMessage(t('player_wins_game', { name: winnerName }));
-            setLastWinnerMessageTime(Date.now());
-          } else if (winners.length > 1) {
-            setWinnerMessage(t('multiple_winners'));
-            setLastWinnerMessageTime(Date.now());
-          }
-        }
+        // Game end detection (notifications removed as requested)
         
-        // Detect round winner
+        // Round winner detection (winner notifications removed as requested)
         if (newGameState.last_round_winner && 
             newGameState.last_round_winner !== gameState.last_round_winner) {
-          const winnerName = newGameState.player_names[newGameState.last_round_winner] || 
-                           `Player ${newGameState.last_round_winner}`;
           setPrevRoundWinner(newGameState.last_round_winner);
           
-          // Show round winner message
-          if (newGameState.multiplicador && newGameState.multiplicador > 1) {
-            setRoundEndMessage(t('player_wins_round_multiplier', { 
-              name: winnerName, 
-              multiplier: newGameState.multiplicador 
-            }));
-          } else {
-            setRoundEndMessage(t('player_wins_round', { name: winnerName }));
-          }
+          // Only show tie messages, not winner messages
+          const isTieRound = newGameState.tie_in_previous_round || 
+                            (newGameState.cancelled_cards && newGameState.cancelled_cards.length > 0 &&
+                             newGameState.mesa && newGameState.mesa.length === newGameState.cancelled_cards.length);
           
-          // Clear round end message after delay
-          setTimeout(() => {
-            setRoundEndMessage(null);
-          }, 4000);
+          if (isTieRound) {
+            // This is a tie round - show tie message
+            setRoundEndMessage(t('round_tied_multiplier_increased', { 
+              multiplier: newGameState.multiplicador || 1 
+            }));
+            
+            // Clear round end message after delay
+            setTimeout(() => {
+              setRoundEndMessage(null);
+            }, 4000);
+          }
         }
         
         // Handle tie situations
@@ -464,6 +489,16 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
       // Could add immediate UI feedback here if needed
     });
 
+    // Handle game-started event for immediate transition
+    socket.on('game-started', (data) => {
+      console.log('Received game-started event:', data);
+      if (data.gameState) {
+        setGameState(data.gameState);
+        updateGameStatus(data.gameState);
+        setStateVersion(Date.now());
+      }
+    });
+
     // Handle lobby return events for instant response
     socket.on('lobby-returned', (data) => {
       try {
@@ -479,6 +514,19 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         }
       } catch (error) {
         console.error("Error handling lobby-returned event", error);
+      }
+    });
+
+    // Handle force lobby refresh events (for when new players join)
+    socket.on('force-lobby-refresh', (data) => {
+      try {
+        console.log('Received force-lobby-refresh event:', data);
+        setLastSocketActivity(Date.now());
+        
+        // Force fetch the latest game state to show new players
+        fetchInitialGameState();
+      } catch (error) {
+        console.error("Error handling force-lobby-refresh event", error);
       }
     });
 
@@ -503,6 +551,7 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
       socket.off('action-error');
       socket.off('optimistic-update');
       socket.off('lobby-returned');
+      socket.off('force-lobby-refresh');
       
       // Clear any pending timers
       Object.values(actionDebounceTimers.current).forEach(timer => {
@@ -545,9 +594,16 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
           if (data.version) {
             setStateVersion(data.version);
           }
+        } else {
+          console.warn('Game state response missing game_state field:', data);
         }
+      } else if (response.status === 404) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Game state not found - game may not have started yet:', errorData.error);
+        // Don't show error to user - this is expected during game initialization
       } else {
         console.error('Failed to fetch initial game state:', response.status);
+        showError('Failed to load game state. Please try refreshing.', 5000);
       }
     } catch (error) {
       console.error('Error fetching initial game state:', error);
@@ -596,10 +652,93 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     }
   };
 
-  // DISABLED POLLING - Using WebSocket only
-  // useEffect(() => {
-  //   // DISABLED: Polling disabled completely to prevent API spam
-  // }, []);
+  // State synchronization and round transition monitoring
+  useEffect(() => {
+    if (!gameId || !playerId) return;
+    
+    const syncCheckInterval = setInterval(() => {
+      const timeSinceActivity = Date.now() - lastSocketActivity;
+      
+      // Special handling for round_over state - ensure transitions happen
+      if (gameState?.estado === 'round_over' && 
+          gameState?.current_round && 
+          gameState?.cartas && 
+          gameState?.current_round < gameState?.cartas) {
+        
+        // If we've been in round_over for more than 3 seconds, force a state check
+        console.log('Checking round_over transition - ensuring round progresses');
+        fetchInitialGameState();
+        return;
+      }
+      
+      // Emergency sync for long disconnections
+      if (timeSinceActivity > 60000 && 
+          gameState?.estado !== 'terminado' && 
+          socketReady) {
+        
+        console.log('Performing emergency state synchronization check (60+ seconds inactive)');
+        checkStateSynchronization();
+      }
+    }, 3000); // Check every 3 seconds for round_over, 30s for emergency
+    
+    return () => clearInterval(syncCheckInterval);
+  }, [gameId, playerId, lastSocketActivity, gameState?.estado, gameState?.current_round, gameState?.cartas, socketReady]);
+  
+  // Function to check if player is stuck in an old state
+  const checkStateSynchronization = async () => {
+    try {
+      const response = await fetch(`/api/game-state/${gameId}?playerId=${playerId}&sync=true`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success' && data.game_state) {
+          const serverState = data.game_state;
+          
+          // Check for SIGNIFICANT state differences that indicate the player is truly stuck
+          // Be more conservative to avoid interfering with normal gameplay
+          const isStuck = (
+            // Major round or hand differences (more than 1 difference)
+            (Math.abs((serverState.current_round || 0) - (gameState?.current_round || 0)) > 1) ||
+            (Math.abs((serverState.current_hand || 0) - (gameState?.current_hand || 0)) > 1) ||
+            // Game phase differences that matter (not normal transitions)
+            (serverState.estado === 'terminado' && gameState?.estado !== 'terminado') ||
+            (serverState.estado === 'aguardando' && gameState?.estado !== 'aguardando') ||
+            // Significant player count changes
+            (Math.abs((serverState.ordem_jogada?.length || 0) - (gameState?.ordem_jogada?.length || 0)) > 1)
+          );
+          
+          if (isStuck) {
+            console.warn('Player appears to be significantly behind, forcing recovery');
+            console.log('Server state:', {
+              round: serverState.current_round,
+              hand: serverState.current_hand,
+              estado: serverState.estado,
+              currentPlayerIdx: serverState.current_player_idx
+            });
+            console.log('Local state:', {
+              round: gameState?.current_round,
+              hand: gameState?.current_hand,
+              estado: gameState?.estado,
+              currentPlayerIdx: gameState?.current_player_idx
+            });
+            
+            // Force update with recovery flag
+            setGameState(serverState);
+            updateGameStatus(serverState);
+            setStateVersion(Date.now());
+            
+            // Emit recovery signal to socket
+            if (socket && socket.connected) {
+              socket.emit('player-recovered', { gameId, playerId, reason: 'state_desync' });
+            }
+            
+            showError('Game state synchronized - you were behind!', 3000);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking state synchronization:', error);
+    }
+  };
 
   // Handle tie notification with appropriate delay and cleanup
   const handleTieNotification = (multiplicador: number, isHost: boolean) => {
@@ -658,8 +797,10 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     if (!state) return;
 
     // Clear previous messages
-    setGameStatus('');
-    setWaitingMsg('');
+    setGameStatusKey('');
+    setGameStatusParams({});
+    setWaitingMsgKey('');
+    setWaitingMsgParams({});
     setNotificationType('');
 
     const isMyTurn = state.ordem_jogada?.[state.current_player_idx || 0] === playerId;
@@ -669,61 +810,95 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     switch (state.estado) {
       case 'aguardando':
         if (playerId === 1) {
-          setGameStatus(t('waiting_to_start'));
+          setGameStatusKey('waiting_to_start');
           setNotificationType('waiting');
         } else {
-          setWaitingMsg(t('waiting_for_host'));
+          setWaitingMsgKey('waiting_for_host');
           setNotificationType('waiting');
         }
         break;
 
       case 'apostas':
         if (isMyTurn) {
-          setGameStatus(t('your_turn_bet'));
+          setGameStatusKey('your_turn_bet');
           setNotificationType('turn');
         } else {
-          setWaitingMsg(t('waiting_for_bet', { player: currentPlayerName }));
+          setWaitingMsgKey('waiting_for_bet');
+          setWaitingMsgParams({ player: currentPlayerName });
           setNotificationType('waiting');
         }
         break;
 
       case 'jogando':
         if (isMyTurn) {
-          setGameStatus(t('your_turn_play'));
+          setGameStatusKey('your_turn_play');
           setNotificationType('turn');
         } else {
-          setWaitingMsg(t('waiting_for_play', { player: currentPlayerName }));
+          setWaitingMsgKey('waiting_for_play');
+          setWaitingMsgParams({ player: currentPlayerName });
           setNotificationType('waiting');
         }
         break;
 
       case 'round_over':
-        setGameStatus(t('round_completed'));
+        // Check if this was a tie round first
+        const isTieRound = state.tie_in_previous_round || 
+                          (state.cancelled_cards && state.cancelled_cards.length > 0 &&
+                           state.mesa && state.mesa.length === state.cancelled_cards.length) ||
+                          (state.multiplicador && state.multiplicador > 1);
+        
+        if (isTieRound) {
+          // Show tie message with multiplier information
+          // In a tie situation, multiplier should always be >= 2
+          const multiplier = state.multiplicador && state.multiplicador > 1 ? state.multiplicador : 2;
+          setGameStatusKey('round_tied_next_worth_more');
+          setGameStatusParams({ multiplier });
+        } else if (state.last_round_winner && state.player_names) {
+          // Show who won the round and that next round is starting
+          const winnerName = state.player_names[state.last_round_winner] || `Player ${state.last_round_winner}`;
+          setGameStatusKey('round_winner_next_round');
+          setGameStatusParams({ name: winnerName });
+        } else {
+          setGameStatusKey('round_completed_next_round');
+        }
         setNotificationType('nextHand');
         
-        // If we're in round_over state and it's not the last round, 
-        // set up a fallback to refresh state after 3 seconds in case the automatic transition doesn't work
+        // Conservative fallback mechanism - only if truly stuck
         if (state.current_round && state.cartas && state.current_round < state.cartas) {
+          // Only add fallback if we've been in round_over for more than 5 seconds
+          // This prevents interfering with the normal 1.5s transition
           setTimeout(() => {
-            console.log('Round_over fallback: refreshing game state');
-            fetchInitialGameState();
-          }, 3000);
+            if (gameState?.estado === 'round_over') {
+              console.log('Round appears stuck after 5 seconds, attempting gentle recovery');
+              fetchInitialGameState();
+            }
+          }, 5000);
+          
+          // Emergency fallback only after 15 seconds
+          setTimeout(() => {
+            if (gameState?.estado === 'round_over') {
+              console.log('Round definitely stuck after 15 seconds, forcing recovery');
+              if (socket && socket.connected) {
+                socket.emit('force-state-sync', { gameId, reason: 'round_over_stuck' });
+              }
+            }
+          }, 15000);
         }
         break;
 
       case 'hand_over':
-        setGameStatus(t('hand_completed'));
+        setGameStatusKey('hand_completed');
         setNotificationType('nextHand');
         break;
 
       case 'terminado':
-        setGameStatus(t('game_finished'));
+        setGameStatusKey('game_finished');
         setNotificationType('gameState');
         break;
 
       default:
         console.warn('Unknown game state:', state.estado, 'Full state:', state);
-        setGameStatus(t('unknown_state'));
+        setGameStatusKey('unknown_state');
         setNotificationType('gameState');
     }
   };
@@ -743,6 +918,10 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     await debounceAction(actionKey, async () => {
       try {
         console.log('Starting round for game:', gameId);
+        
+        // Store current state version to detect changes
+        const currentStateVersion = stateVersion;
+        
         const response = await fetch(`/api/start-round/${gameId}`, {
           method: 'POST',
           headers: {
@@ -754,12 +933,35 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         if (response.ok) {
           const data = await response.json();
           console.log('Round started successfully:', data);
+          
+          // Immediately update local state to prevent delays
+          if (data.game_state) {
+            setGameState(data.game_state);
+            updateGameStatus(data.game_state);
+            setStateVersion(Date.now());
+          }
+          
+          // Conservative fallback - only if other players seem stuck
+          setTimeout(() => {
+            // Only force sync if we suspect other players didn't get the update
+            // Check if we're still in the same state after 3 seconds
+            if (gameState?.estado === data.game_state?.estado && 
+                gameState?.current_round === data.game_state?.current_round) {
+              console.log('Other players may not have received start_round update, sending fallback');
+              if (socket && socket.connected) {
+                socket.emit('force-state-sync', { gameId, reason: 'start_round_fallback' });
+              }
+            }
+          }, 3000);
+          
         } else {
           const errorData = await response.json();
           console.error('Failed to start round:', errorData);
+          showError(`Failed to start round: ${errorData.error || 'Unknown error'}`);
         }
       } catch (error) {
         console.error('Error starting round:', error);
+        showError('Error starting round. Please check your connection and try again.');
       }
     });
   };
@@ -793,25 +995,15 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         const data = await response.json();
         console.log('Bet made successfully:', data);
         
-        // Set up a fallback to refresh state if socket doesn't update within 2 seconds
-        const fallbackTimeout = setTimeout(() => {
-          console.log('Socket update not received, forcing state refresh');
-          fetchInitialGameState();
-        }, 2000);
+        // Immediate optimistic UI update
+        if (data.game_state) {
+          setGameState(data.game_state);
+          updateGameStatus(data.game_state);
+          setStateVersion(Date.now());
+          console.log('Applied immediate game state update from bet response');
+        }
         
-        // Clear the fallback if we receive a socket update
-        const originalStateVersion = stateVersion;
-        const checkForUpdate = setInterval(() => {
-          if (stateVersion > originalStateVersion) {
-            clearTimeout(fallbackTimeout);
-            clearInterval(checkForUpdate);
-          }
-        }, 100);
-        
-        // Clean up the check after 3 seconds
-        setTimeout(() => {
-          clearInterval(checkForUpdate);
-        }, 3000);
+        // The socket will broadcast to other players, no need for fallback delays
         
       } else {
         const errorData = await response.json();
@@ -922,6 +1114,40 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
     }
   };
 
+  // Manual recovery function for stuck players
+  const manualRecover = async () => {
+    console.log('Manual recovery initiated by player');
+    setShowRecoveryButton(false);
+    
+    try {
+      // 1. Force state synchronization
+      await checkStateSynchronization();
+      
+      // 2. Rejoin game room
+      if (socket && socket.connected) {
+        socket.emit('leave-game', { gameId, playerId });
+        setTimeout(() => {
+          socket.emit('join-game', {
+            gameId,
+            playerId,
+            playerName: localStorage.getItem(`player_name_${playerId}`) || `Player ${playerId}`,
+            requestImmediate: true
+          });
+        }, 500);
+      }
+      
+      // 3. Force fresh state fetch
+      setTimeout(() => {
+        fetchInitialGameState();
+      }, 1000);
+      
+      showError('Recovery attempted - refreshing game state...', 3000);
+    } catch (error) {
+      console.error('Manual recovery failed:', error);
+      showError('Recovery failed. Try refreshing the page.', 5000);
+    }
+  };
+
   // Check if current player is the host
   const isHost = () => {
     // Primary check: use host_id if available
@@ -970,6 +1196,19 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
           }}>
             {socketReady ? '🟢 Connected' : '🔴 Connecting...'}
           </div>
+          
+          {/* Additional status for long loading times */}
+          {socketReady && (
+            <p style={{ 
+              marginTop: '1rem', 
+              color: '#999', 
+              fontSize: '0.9rem',
+              textAlign: 'center',
+              maxWidth: '300px'
+            }}>
+              Game is starting... This may take a few seconds while the game state is being initialized.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -992,9 +1231,14 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
             </p>
           )}
         </div>
-        <button onClick={onLeaveGame} className={styles.leaveButton}>
-          {t('leave_game')}
-        </button>
+        
+
+        
+        <div className={styles.leaveButtonContainer}>
+          <button onClick={onLeaveGame} className={styles.leaveButton}>
+            {t('leave_game')}
+          </button>
+        </div>
       </div>
 
       {/* Error Message Display */}
@@ -1043,21 +1287,14 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         totalCards={gameState?.cartas}
         cancelledCards={gameState?.cancelled_cards}
         tieResolvedByTiebreaker={gameState?.tie_resolved_by_tiebreaker}
-        multiplicador={gameState?.multiplicador}
       />
 
       {/* Consolidated notification area - prevent overlapping notifications */}
-      {(gameStatus || winnerMessage || roundEndMessage) && (
+      {(gameStatusKey || roundEndMessage) && (
         <div className={styles.notificationArea}>
-          {gameStatus && (
+          {gameStatusKey && (
             <div className={`${styles.gameStatus} ${getNotificationClass()}`}>
-              <p>{gameStatus}</p>
-            </div>
-          )}
-          
-          {winnerMessage && (
-            <div className={`${styles.winnerMessage} ${styles.gameStateNotification}`}>
-              <p>{winnerMessage}</p>
+              <p>{t(gameStatusKey, gameStatusParams)}</p>
             </div>
           )}
           
@@ -1069,9 +1306,9 @@ export default function Game({ gameId, playerId, onLeaveGame, onReturnToLobby }:
         </div>
       )}
 
-      {waitingMsg && (
+      {waitingMsgKey && (
         <div className={styles.waitingMsg}>
-          <p>{waitingMsg}</p>
+          <p>{t(waitingMsgKey, waitingMsgParams)}</p>
         </div>
       )}
 
