@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
-import { playCardSchema, gameIdSchema, validateRequest } from '../../../lib/validation';
+import { playCardSchema, gameIdSchema, validateRequest, PlayCardRequest } from '../../../lib/validation';
+import { recordCardPlay, createRoundRecord, completeRound, completeHand, completeGame, getCurrentHandId, getCurrentRoundId, getUserIdFromGame } from '../../../lib/gameTracking';
 
 const ORDEM_CARTAS = {
   '4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9
@@ -134,7 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    const { player_id, card_index } = bodyValidation.data;
+    const { player_id, card_index } = bodyValidation.data as PlayCardRequest;
     
     // Simple no-cache headers for card playing
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -266,6 +267,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         gameState.mesa.push([player_id, card]);
         gameState.cards_played_this_round = (gameState.cards_played_this_round || 0) + 1;
         
+        // Track the card play in database
+        try {
+          const handId = await getCurrentHandId(gameId as string);
+          let roundId = handId ? await getCurrentRoundId(handId) : null;
+          
+          // If this is the first card of a new round, create the round record
+          if (gameState.mesa.length === 1 && handId) {
+            const roundRecord = await createRoundRecord({
+              handId: handId,
+              roundNumber: gameState.current_round || 1
+            });
+            roundId = roundRecord.id;
+          }
+          
+          if (handId && roundId) {
+            const playerUserId = await getUserIdFromGame(gameId as string, player_id);
+            if (playerUserId) {
+              await recordCardPlay({
+                roundId,
+                playerId: player_id,
+                userId: playerUserId,
+                cardPlayed: card,
+                playOrder: gameState.mesa.length
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error tracking card play:', error);
+          // Continue with game logic even if tracking fails
+        }
+        
         // Advance to the next player in the ordem_jogada (which should only contain active players)
         gameState.current_player_idx = (gameState.current_player_idx + 1) % gameState.ordem_jogada.length;
       } else {
@@ -278,13 +310,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ status: 'error', error: 'Invalid card index' });
       }
       
-      // Play the card
-      const card = hand.splice(card_index, 1)[0];
-      gameState.mesa.push([player_id, card]);
-      gameState.cards_played_this_round = (gameState.cards_played_this_round || 0) + 1;
+          // Play the card
+    const card = hand.splice(card_index, 1)[0];
+    gameState.mesa.push([player_id, card]);
+    gameState.cards_played_this_round = (gameState.cards_played_this_round || 0) + 1;
+    
+    // Track the card play in database
+    try {
+      const handId = await getCurrentHandId(gameId as string);
+      let roundId = await getCurrentRoundId(handId!);
       
-      // Advance to the next player in the ordem_jogada (which should only contain active players)
-      gameState.current_player_idx = (gameState.current_player_idx + 1) % gameState.ordem_jogada.length;
+      // If this is the first card of a new round, create the round record
+      if (gameState.mesa.length === 1) {
+        const roundRecord = await createRoundRecord({
+          handId: handId!,
+          roundNumber: gameState.current_round || 1
+        });
+        roundId = roundRecord.id;
+      }
+      
+      if (handId && roundId) {
+        const playerUserId = await getUserIdFromGame(gameId as string, player_id);
+        if (playerUserId) {
+          await recordCardPlay({
+            roundId,
+            playerId: player_id,
+            userId: playerUserId,
+            cardPlayed: card,
+            playOrder: gameState.mesa.length
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error tracking card play:', error);
+      // Continue with game logic even if tracking fails
+    }
+    
+    // Advance to the next player in the ordem_jogada (which should only contain active players)
+    gameState.current_player_idx = (gameState.current_player_idx + 1) % gameState.ordem_jogada.length;
     }
     
     // If all active players have played, resolve the trick
@@ -488,6 +551,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gameState.last_round_winner = winner;
       gameState.last_trick_winner = winner; // For backward compatibility
       
+      // Track round completion in database
+      try {
+        const handId = await getCurrentHandId(gameId as string);
+        const roundId = handId ? await getCurrentRoundId(handId) : null;
+        
+        if (roundId && !isTie) {
+          // Find the winning card from the mesa
+          const winningCard = gameState.mesa.find(([pid]) => pid === winner)?.[1];
+          if (winningCard) {
+            await completeRound(roundId, winner, winningCard);
+          }
+        }
+      } catch (error) {
+        console.error('Error tracking round completion:', error);
+        // Continue with game logic even if tracking fails
+      }
+      
       // Check if round is over (all players have played one card in this round)
       const isRoundComplete = gameState.cards_played_this_round === activePlayersCount;
       
@@ -519,6 +599,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           
           // Flag the winner of the final round for UI highlighting
           gameState.winning_card_played_by = winner;
+          
+          // Track hand completion in database
+          try {
+            const handId = await getCurrentHandId(gameId as string);
+            if (handId) {
+              await completeHand(handId, gameState.vitorias);
+            }
+          } catch (error) {
+            console.error('Error tracking hand completion:', error);
+            // Continue with game logic even if tracking fails
+          }
           
           // Calculate life losses based on bets vs. tricks won
           for (const playerId of gameState.players) {
@@ -553,6 +644,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (gameEnds) {
             // Game is over
             gameState.estado = 'terminado';
+            
+            // Track game completion in database
+            try {
+              const finalResults = gameState.players.map((playerId, index) => ({
+                playerId,
+                userId: '', // Will be filled by getUserIdFromGame
+                finalPosition: gameState.eliminados.includes(playerId) ? gameState.players.length : 1,
+                livesRemaining: gameState.vidas[playerId] || 0,
+                isWinner: !gameState.eliminados.includes(playerId)
+              }));
+              
+              // Fill in user IDs
+              for (const result of finalResults) {
+                const userId = await getUserIdFromGame(gameId as string, result.playerId);
+                result.userId = userId || 'anonymous';
+              }
+              
+              await completeGame(gameId as string, finalResults);
+            } catch (error) {
+              console.error('Error tracking game completion:', error);
+              // Continue with game logic even if tracking fails
+            }
           } else {
             // Ready to start a new hand
             gameState.estado = 'aguardando';

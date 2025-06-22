@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
+import { markGameAsStarted } from '../../../lib/gameTracking';
 
 const SUITS = ['♣', '♥', '♠', '♦'];
 const VALUES = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3'];
@@ -201,6 +202,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!success) {
       console.error(`Failed to save game state for game ${id}`);
       return res.status(500).json({ status: 'error', error: 'Failed to save game state' });
+    }
+
+    // Mark game as started in tracking database
+    try {
+      await markGameAsStarted(id);
+    } catch (error) {
+      console.error('Failed to mark game as started in tracking:', error);
+      // Don't fail the request, just log the error
     }
     
     console.log(`Game ${id} successfully started`);

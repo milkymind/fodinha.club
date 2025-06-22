@@ -5332,6 +5332,390 @@
       "lastUpdated": "2025-06-21T18:24:03.829Z",
       "lastPlayerCleanup": "2025-06-21T18:24:02.982Z",
       "cachedAt": 1750530241702
+    },
+    "U9Z2": {
+      "gameId": "U9Z2",
+      "players": [
+        {
+          "id": 1,
+          "name": "Auth_host"
+        },
+        {
+          "id": 2,
+          "name": "dvd"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": true,
+      "gameState": {
+        "players": [
+          1,
+          2
+        ],
+        "player_names": {
+          "1": "Auth_host",
+          "2": "dvd"
+        },
+        "vidas": {
+          "1": 2,
+          "2": 0
+        },
+        "estado": "terminado",
+        "carta_meio": "J♠",
+        "manilha": "K",
+        "maos": {
+          "1": [],
+          "2": []
+        },
+        "original_maos": {
+          "1": [],
+          "2": []
+        },
+        "palpites": {
+          "1": 2,
+          "2": 3
+        },
+        "initial_lives": 3,
+        "current_round": 3,
+        "current_hand": 2,
+        "current_player_idx": 0,
+        "ordem_jogada": [
+          1,
+          2
+        ],
+        "multiplicador": 1,
+        "soma_palpites": 5,
+        "mesa": [
+          [
+            1,
+            "5♥"
+          ],
+          [
+            2,
+            "K♣"
+          ]
+        ],
+        "vitorias": {
+          "1": 1,
+          "2": 2
+        },
+        "dealer": 1,
+        "first_player": 2,
+        "cartas": 3,
+        "eliminados": [
+          2
+        ],
+        "direction": "up",
+        "startFrom": "one",
+        "maxCardsPerPlayer": 20,
+        "tie_in_previous_round": false,
+        "tie_resolved_by_tiebreaker": false,
+        "cancelled_cards": [],
+        "last_activity": {
+          "1": 1750559915144,
+          "2": 1750559915144
+        },
+        "middle_card_workaround": {
+          "used": false
+        },
+        "cards_played_this_round": 0,
+        "last_round_winner": 2,
+        "last_trick_winner": 2,
+        "winning_card_played_by": 2
+      },
+      "lastUpdated": "2025-06-22T02:53:08.288Z",
+      "lastPlayerCleanup": "2025-06-22T02:38:33.890Z",
+      "cachedAt": 1750560786139
+    },
+    "QR0X": {
+      "gameId": "QR0X",
+      "players": [
+        {
+          "id": 1,
+          "name": "Auth_host"
+        },
+        {
+          "id": 2,
+          "name": "sds"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": true,
+      "gameState": {
+        "players": [
+          1,
+          2
+        ],
+        "player_names": {
+          "1": "Auth_host",
+          "2": "sds"
+        },
+        "vidas": {
+          "1": 3,
+          "2": 0
+        },
+        "estado": "terminado",
+        "carta_meio": "5♠",
+        "manilha": "6",
+        "maos": {
+          "1": [],
+          "2": []
+        },
+        "original_maos": {
+          "1": [],
+          "2": []
+        },
+        "palpites": {
+          "1": 0,
+          "2": 0
+        },
+        "initial_lives": 3,
+        "current_round": 2,
+        "current_hand": 1,
+        "current_player_idx": 0,
+        "ordem_jogada": [
+          2,
+          1
+        ],
+        "multiplicador": 1,
+        "soma_palpites": 0,
+        "mesa": [
+          [
+            2,
+            "K♦"
+          ],
+          [
+            1,
+            "J♠"
+          ]
+        ],
+        "vitorias": {
+          "1": 0,
+          "2": 2
+        },
+        "dealer": 2,
+        "first_player": 1,
+        "cartas": 2,
+        "eliminados": [
+          2
+        ],
+        "direction": "up",
+        "startFrom": "one",
+        "maxCardsPerPlayer": 20,
+        "tie_in_previous_round": false,
+        "tie_resolved_by_tiebreaker": false,
+        "cancelled_cards": [],
+        "last_activity": {
+          "1": 1750561562841,
+          "2": 1750561562841
+        },
+        "middle_card_workaround": {
+          "used": false
+        },
+        "cards_played_this_round": 0,
+        "winning_card_played_by": 2,
+        "last_round_winner": 2,
+        "last_trick_winner": 2
+      },
+      "lastUpdated": "2025-06-22T03:07:01.350Z",
+      "lastPlayerCleanup": "2025-06-22T03:06:02.106Z",
+      "cachedAt": 1750561614330
+    },
+    "UXFI": {
+      "gameId": "UXFI",
+      "players": [
+        {
+          "id": 1,
+          "name": "auth_host"
+        },
+        {
+          "id": 2,
+          "name": "dvd"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": true,
+      "gameState": {
+        "players": [
+          1,
+          2
+        ],
+        "player_names": {
+          "1": "auth_host",
+          "2": "dvd"
+        },
+        "vidas": {
+          "1": 0,
+          "2": 2
+        },
+        "estado": "terminado",
+        "carta_meio": "J♠",
+        "manilha": "K",
+        "maos": {
+          "1": [],
+          "2": []
+        },
+        "original_maos": {
+          "1": [],
+          "2": []
+        },
+        "palpites": {
+          "1": 2,
+          "2": 1
+        },
+        "initial_lives": 3,
+        "current_round": 2,
+        "current_hand": 1,
+        "current_player_idx": 0,
+        "ordem_jogada": [
+          2,
+          1
+        ],
+        "multiplicador": 1,
+        "soma_palpites": 3,
+        "mesa": [
+          [
+            2,
+            "2♦"
+          ],
+          [
+            1,
+            "7♣"
+          ]
+        ],
+        "vitorias": {
+          "1": 0,
+          "2": 2
+        },
+        "dealer": 2,
+        "first_player": 1,
+        "cartas": 2,
+        "eliminados": [
+          1
+        ],
+        "direction": "up",
+        "startFrom": "one",
+        "maxCardsPerPlayer": 20,
+        "tie_in_previous_round": false,
+        "tie_resolved_by_tiebreaker": false,
+        "cancelled_cards": [],
+        "last_activity": {
+          "1": 1750562414751,
+          "2": 1750562414751
+        },
+        "middle_card_workaround": {
+          "used": false
+        },
+        "cards_played_this_round": 0,
+        "winning_card_played_by": 2,
+        "last_round_winner": 2,
+        "last_trick_winner": 2
+      },
+      "lastUpdated": "2025-06-22T03:21:19.668Z",
+      "cachedAt": 1750562472501,
+      "lastPlayerCleanup": "2025-06-22T03:20:13.959Z"
+    },
+    "R7M1": {
+      "gameId": "R7M1",
+      "players": [
+        {
+          "id": 1,
+          "name": "auth_host"
+        },
+        {
+          "id": 2,
+          "name": "GUEST"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": true,
+      "gameState": {
+        "players": [
+          1,
+          2
+        ],
+        "player_names": {
+          "1": "auth_host",
+          "2": "GUEST"
+        },
+        "vidas": {
+          "1": 2,
+          "2": 0
+        },
+        "estado": "terminado",
+        "carta_meio": "K♠",
+        "manilha": "A",
+        "maos": {
+          "1": [],
+          "2": []
+        },
+        "original_maos": {
+          "1": [],
+          "2": []
+        },
+        "palpites": {
+          "1": 1,
+          "2": 2
+        },
+        "initial_lives": 3,
+        "current_round": 2,
+        "current_hand": 1,
+        "current_player_idx": 0,
+        "ordem_jogada": [
+          1,
+          2
+        ],
+        "multiplicador": 1,
+        "soma_palpites": 3,
+        "mesa": [
+          [
+            1,
+            "A♠"
+          ],
+          [
+            2,
+            "7♠"
+          ]
+        ],
+        "vitorias": {
+          "1": 2,
+          "2": 0
+        },
+        "dealer": 2,
+        "first_player": 1,
+        "cartas": 2,
+        "eliminados": [
+          2
+        ],
+        "direction": "up",
+        "startFrom": "one",
+        "maxCardsPerPlayer": 20,
+        "tie_in_previous_round": false,
+        "tie_resolved_by_tiebreaker": false,
+        "cancelled_cards": [],
+        "last_activity": {
+          "1": 1750563367874,
+          "2": 1750563367874
+        },
+        "middle_card_workaround": {
+          "used": false
+        },
+        "cards_played_this_round": 0,
+        "winning_card_played_by": 1,
+        "last_round_winner": 1,
+        "last_trick_winner": 1
+      },
+      "lastUpdated": "2025-06-22T03:37:05.067Z",
+      "lastPlayerCleanup": "2025-06-22T03:36:06.923Z",
+      "cachedAt": 1750563417271
     }
   }
 }

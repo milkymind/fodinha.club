@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
-import { makeBetSchema, gameIdSchema, validateRequest } from '../../../lib/validation';
+import { makeBetSchema, gameIdSchema, validateRequest, MakeBetRequest } from '../../../lib/validation';
+import { recordPlayerBet, getCurrentHandId, getUserIdFromGame } from '../../../lib/gameTracking';
 
 interface GameState {
   players: number[];
@@ -97,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    const { player_id, bet } = bodyValidation.data;
+    const { player_id, bet } = bodyValidation.data as MakeBetRequest;
     
     // Generate caching key and fingerprint
     const cacheKey = `bet-${gameId}-${player_id}-${Date.now().toString().slice(0, -3)}`;
@@ -171,6 +172,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Calculate sum of palpites
     gameState.soma_palpites = Object.values(gameState.palpites).reduce((a: number, b: number) => a + b, 0);
+
+    // Track the bet in our metrics database
+    try {
+      const handId = await getCurrentHandId(gameId as string);
+      const userId = await getUserIdFromGame(gameId as string, player_id);
+      
+      if (handId && userId) {
+        const isLastToBet = gameState.current_player_idx === gameState.ordem_jogada.length - 1;
+        const livesBeforeBet = gameState.vidas[player_id] || 0;
+        
+        await recordPlayerBet({
+          handId,
+          playerId: player_id,
+          userId,
+          betValue: bet,
+          isLastToBet,
+          livesBeforeBet,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to track bet in metrics database:', error);
+      // Don't fail the request, just log the error
+    }
     
     // Move to next player
     console.log(`Before: current_player_idx=${gameState.current_player_idx}, bets=${JSON.stringify(gameState.palpites)}`);
