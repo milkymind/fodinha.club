@@ -2,7 +2,17 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
 import { playCardSchema, gameIdSchema, validateRequest, PlayCardRequest } from '../../../lib/validation';
-import { recordCardPlay, createRoundRecord, completeRound, completeHand, completeGame, getCurrentHandId, getCurrentRoundId, getUserIdFromGame } from '../../../lib/gameTracking';
+import { 
+  recordCardPlay, 
+  createRoundRecord, 
+  completeRound, 
+  completeTiedRound, 
+  completeHand, 
+  completeGame, 
+  getCurrentHandId, 
+  getCurrentRoundId, 
+  getUserIdFromGame 
+} from '../../../lib/gameTracking';
 
 const ORDEM_CARTAS = {
   '4': 0, '5': 1, '6': 2, '7': 3, 'Q': 4, 'J': 5, 'K': 6, 'A': 7, '2': 8, '3': 9
@@ -274,17 +284,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           
           // If this is the first card of a new round, create the round record
           if (gameState.mesa.length === 1 && handId) {
+            const isMultiplierRound = gameState.soma_palpites === gameState.cartas;
             const roundRecord = await createRoundRecord({
               handId: handId,
-              roundNumber: gameState.current_round || 1
+              roundNumber: gameState.current_round || 1,
+              multiplierValue: gameState.multiplicador || 1,
+              isMultiplierRound: isMultiplierRound
             });
             roundId = roundRecord.id;
+            console.log('Created round record:', roundRecord);
           }
           
           if (handId && roundId) {
             const playerUserId = await getUserIdFromGame(gameId as string, player_id);
             if (playerUserId) {
               await recordCardPlay({
+                handId,
                 roundId,
                 playerId: player_id,
                 userId: playerUserId,
@@ -322,17 +337,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // If this is the first card of a new round, create the round record
       if (gameState.mesa.length === 1) {
+        const isMultiplierRound = gameState.soma_palpites === gameState.cartas;
         const roundRecord = await createRoundRecord({
           handId: handId!,
-          roundNumber: gameState.current_round || 1
+          roundNumber: gameState.current_round || 1,
+          multiplierValue: gameState.multiplicador || 1,
+          isMultiplierRound: isMultiplierRound
         });
         roundId = roundRecord.id;
+        console.log('Created round record:', roundRecord);
       }
       
       if (handId && roundId) {
         const playerUserId = await getUserIdFromGame(gameId as string, player_id);
         if (playerUserId) {
           await recordCardPlay({
+            handId,
             roundId,
             playerId: player_id,
             userId: playerUserId,
@@ -681,12 +701,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const handId = await getCurrentHandId(gameId as string);
         const roundId = handId ? await getCurrentRoundId(handId) : null;
         
-        if (roundId && !isTie) {
-          // Find the winning card from the mesa
-          const winningCard = gameState.mesa.find(([pid]) => pid === winner)?.[1];
-          if (winningCard) {
-            await completeRound(roundId, winner, winningCard);
+        console.log(`Round completion tracking: handId=${handId}, roundId=${roundId}, isTie=${isTie}, winner=${winner}`);
+        console.log(`Attempting to complete round: handId=${handId}, roundId=${roundId}, isTie=${isTie}, winner=${winner}`);
+        
+        if (roundId) {
+          if (isTie) {
+            // This is a tied round - mark it as TIED
+            console.log(`Completing tied round ${roundId}`);
+            await completeTiedRound(roundId);
+            console.log(`Successfully completed tied round ${roundId}`);
+          } else {
+            // Find the winning card from the mesa
+            const winningCard = gameState.mesa.find(([pid]) => pid === winner)?.[1];
+            if (winningCard) {
+              console.log(`Attempting to complete round ${roundId} with winner ${winner} and winning card ${winningCard}`);
+              await completeRound(roundId, winner, winningCard);
+              console.log(`Successfully completed round ${roundId}`);
+            } else {
+              console.log(`Could not find winning card for winner ${winner}`);
+            }
           }
+        } else {
+          console.log(`No roundId found for completion: handId=${handId}`);
         }
       } catch (error) {
         console.error('Error tracking round completion:', error);

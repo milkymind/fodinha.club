@@ -11,7 +11,6 @@ interface LeaderboardEntry {
   value: string;
   gamesPlayed: number;
   lastUpdated: string;
-  percentile?: number;
 }
 
 interface LeaderboardData {
@@ -29,6 +28,12 @@ interface LeaderboardData {
 }
 
 const getMetrics = (t: (key: string) => string) => [
+  {
+    key: 'winPercentage',
+    name: t('win_percentage'),
+    icon: '🏆',
+    description: t('win_percentage_desc')
+  },
   {
     key: 'perfectPredictionRate',
     name: t('perfect_prediction_rate'),
@@ -73,12 +78,13 @@ export default function LeaderboardPage() {
   const { t } = useLanguage();
   const { isDarkMode } = useTheme();
   
-  const [selectedMetric, setSelectedMetric] = useState('perfectPredictionRate');
+  const [selectedMetric, setSelectedMetric] = useState('winPercentage');
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const METRICS = getMetrics(t);
 
@@ -228,16 +234,19 @@ export default function LeaderboardPage() {
   return (
     <AuthWrapper>
       <div style={containerStyle}>
-        {/* Header with stats - all in one line */}
+        {/* Header with centered title and spaced buttons */}
         <div style={headerStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          {/* Left side - Back button */}
+          <div style={{ display: 'flex', alignItems: 'center', minWidth: 'fit-content' }}>
             <button 
               onClick={handleBack}
               style={{
                 ...buttonStyle,
                 backgroundColor: 'transparent',
                 color: primaryColor,
-                border: `1.5px solid ${primaryColor}`
+                border: `1.5px solid ${primaryColor}`,
+                width: '90px',
+                minWidth: '90px'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'rgba(255, 132, 0, 0.1)';
@@ -252,37 +261,30 @@ export default function LeaderboardPage() {
             >
               ← {t('back')}
             </button>
-            <h1 style={titleStyle}>
-              🏆 {t('leaderboard')}
+          </div>
+          
+          {/* Center - Title */}
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <h1 style={{
+              ...titleStyle,
+              margin: 0,
+              justifyContent: 'center'
+            }}>
+              {t('leaderboard')}
             </h1>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          {/* Right side - User rank and refresh button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: 'fit-content' }}>
             {/* Stats Display */}
-            <div style={statsStyle}>
+            {userRank && (
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold', color: primaryColor }}>
-                  {leaderboardData?.totalPlayers || 0}
+                <div style={{ fontWeight: 'bold', color: '#10b981', fontSize: '0.75rem' }}>
+                  #{userRank}
                 </div>
-                <div style={{ color: textSecondary }}>{t('total_players')}</div>
+                <div style={{ color: textSecondary, fontSize: '0.625rem' }}>{t('your_rank')}</div>
               </div>
-              
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold' }}>
-                  {new Date(lastRefresh).toLocaleTimeString()}
-                </div>
-                <div style={{ color: textSecondary }}>{t('last_updated')}</div>
-              </div>
-              
-              {userRank && (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontWeight: 'bold', color: '#10b981' }}>
-                    #{userRank}
-                  </div>
-                  <div style={{ color: textSecondary }}>{t('your_rank')}</div>
-                </div>
-              )}
-            </div>
+            )}
             
             <button
               onClick={handleRefresh}
@@ -291,7 +293,9 @@ export default function LeaderboardPage() {
                 ...buttonStyle,
                 backgroundColor: loading ? textSecondary : primaryColor,
                 color: '#fff',
-                opacity: loading ? 0.6 : 1
+                opacity: loading ? 0.6 : 1,
+                width: '90px',
+                minWidth: '90px'
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
@@ -313,57 +317,58 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
-        {/* Metric Selector */}
+        {/* Metric Selector Dropdown */}
         <div style={sectionStyle}>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '15px', margin: '0 0 15px 0', color: textPrimary }}>{t('select_metric')}</h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '10px'
-          }}>
-            {METRICS.map((metric) => (
-              <button
-                key={metric.key}
-                onClick={() => setSelectedMetric(metric.key)}
-                style={{
-                  padding: '15px',
-                  borderRadius: '6px',
-                  border: selectedMetric === metric.key ? 
-                    `2px solid ${primaryColor}` : 
-                    `1px solid ${borderColor}`,
-                  backgroundColor: selectedMetric === metric.key ? 
-                    primaryColor : 
-                    bgPrimary,
-                  color: selectedMetric === metric.key ? '#fff' : textPrimary,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedMetric !== metric.key) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 132, 0, 0.1)';
-                    e.currentTarget.style.borderColor = primaryColor;
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedMetric !== metric.key) {
-                    e.currentTarget.style.backgroundColor = bgPrimary;
-                    e.currentTarget.style.borderColor = borderColor;
-                    e.currentTarget.style.transform = 'none';
-                  }
-                }}
-              >
-                <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{metric.icon}</div>
-                <div style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '4px' }}>
-                  {metric.name}
-                </div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                  {metric.description}
-                </div>
-              </button>
-            ))}
+          
+          <div style={{ position: 'relative', maxWidth: '400px', margin: '0 auto' }}>
+            <select
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                fontSize: '1rem',
+                backgroundColor: bgPrimary,
+                color: textPrimary,
+                border: `2px solid ${borderColor}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                appearance: 'none',
+                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(textSecondary)}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 12px center',
+                backgroundSize: '20px',
+                paddingRight: '40px',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = primaryColor;
+                e.currentTarget.style.boxShadow = `0 0 0 3px rgba(255, 132, 0, 0.1)`;
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = borderColor;
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {METRICS.map((metric) => (
+                <option 
+                  key={metric.key} 
+                  value={metric.key}
+                  style={{
+                    backgroundColor: bgPrimary,
+                    color: textPrimary,
+                    padding: '8px'
+                  }}
+                >
+                  {metric.icon} {metric.name}
+                </option>
+              ))}
+            </select>
           </div>
+          
+
         </div>
 
         {/* Error State */}
@@ -413,10 +418,92 @@ export default function LeaderboardPage() {
         {/* Leaderboard Table */}
         {leaderboardData && !error && (
           <div style={sectionStyle}>
+            {/* Table Title with Tooltip */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{
+                fontSize: '1.4rem',
+                fontWeight: 'bold',
+                margin: 0,
+                color: textPrimary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                {currentMetricInfo?.icon} {currentMetricInfo?.name}
+              </h2>
+              <div 
+                style={{
+                  position: 'relative',
+                  display: 'inline-block',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowTooltip(!showTooltip)}
+              >
+                <div style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  backgroundColor: showTooltip ? primaryColor : textSecondary,
+                  color: showTooltip ? '#fff' : bgPrimary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  transition: 'all 0.2s ease'
+                }}>
+                  ?
+                </div>
+                
+                {/* Tooltip */}
+                {showTooltip && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '25px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: isDarkMode ? '#2d2d2d' : '#ffffff',
+                    color: textPrimary,
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: `1px solid ${borderColor}`,
+                    boxShadow: `0 4px 12px ${shadow}`,
+                    fontSize: '0.8rem',
+                    minWidth: '200px',
+                    maxWidth: '300px',
+                    textAlign: 'center',
+                    zIndex: 1000,
+                    whiteSpace: 'normal'
+                  }}>
+                    {currentMetricInfo?.description}
+                                         {/* Arrow pointing up */}
+                     <div style={{
+                       position: 'absolute',
+                       top: '-5px',
+                       left: '50%',
+                       width: '10px',
+                       height: '10px',
+                       backgroundColor: isDarkMode ? '#2d2d2d' : '#ffffff',
+                       border: `1px solid ${borderColor}`,
+                       borderBottom: 'none',
+                       borderRight: 'none',
+                       transform: 'translateX(-50%) rotate(45deg)'
+                     }} />
+                  </div>
+                )}
+              </div>
+            </div>
+            
             {/* Table Header - Hidden on mobile */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '60px 1fr 80px 60px 100px',
+              gridTemplateColumns: '60px 1fr 80px 60px',
               gap: '10px',
               padding: '15px',
               backgroundColor: isDarkMode ? '#3a3a3a' : '#e9ecef',
@@ -429,7 +516,6 @@ export default function LeaderboardPage() {
               <div>{t('player')}</div>
               <div>{t('value')}</div>
               <div>{t('games')}</div>
-              <div style={{ display: window.innerWidth > 480 ? 'block' : 'none' }}>{t('percentile')}</div>
             </div>
             
             {/* Table Body */}
@@ -452,7 +538,7 @@ export default function LeaderboardPage() {
                       key={`${entry.rank}-${entry.username}`}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '60px 1fr 80px 60px 100px',
+                        gridTemplateColumns: '60px 1fr 80px 60px',
                         gap: '10px',
                         padding: '12px 15px',
                         borderBottom: index < (leaderboardData.rankings?.length || 0) - 1 ? `1px solid ${borderColor}` : 'none',
@@ -501,30 +587,6 @@ export default function LeaderboardPage() {
                       </div>
                       
                       <div>{entry.gamesPlayed}</div>
-                      
-                      <div style={{ 
-                        display: window.innerWidth > 480 ? 'flex' : 'none',
-                        alignItems: 'center', 
-                        gap: '6px' 
-                      }}>
-                        <div style={{
-                          width: '50px',
-                          height: '6px',
-                          backgroundColor: isDarkMode ? '#333' : '#e0e0e0',
-                          borderRadius: '3px',
-                          overflow: 'hidden'
-                        }}>
-                          <div 
-                            style={{
-                              width: `${entry.percentile || 0}%`,
-                              height: '100%',
-                              backgroundColor: primaryColor,
-                              transition: 'width 0.3s'
-                            }}
-                          />
-                        </div>
-                        <span style={{ fontSize: '0.8rem' }}>{entry.percentile || 0}%</span>
-                      </div>
                     </div>
                   );
                 })
@@ -543,8 +605,14 @@ export default function LeaderboardPage() {
           <p style={{ margin: '0 0 8px 0' }}>
             🎮 {t('only_authenticated_players')}
           </p>
-          <p style={{ margin: 0 }}>
+          <p style={{ margin: '0 0 8px 0' }}>
             📊 {t('metrics_calculated_automatically')}
+          </p>
+          <p style={{ margin: '0 0 6px 0', textAlign: 'center', fontSize: '0.8rem' }}>
+            👥 {t('total_players')}: <span style={{ fontWeight: 'bold', color: primaryColor }}>{leaderboardData?.totalPlayers || 0}</span>
+          </p>
+          <p style={{ margin: 0, textAlign: 'center', fontSize: '0.75rem' }}>
+            🕐 {t('last_updated')}: {new Date(lastRefresh).toLocaleTimeString()}
           </p>
         </div>
 
@@ -553,14 +621,6 @@ export default function LeaderboardPage() {
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-          }
-          
-          /* Mobile responsive adjustments */
-          @media (max-width: 480px) {
-            .leaderboard-table-header div:nth-child(5),
-            .leaderboard-table-row div:nth-child(5) {
-              display: none !important;
-            }
           }
         `}</style>
       </div>

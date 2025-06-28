@@ -82,8 +82,6 @@ export const gameHands = pgTable("game_hands", {
   middleCard: text("middle_card"), // The card that determines manilha
   manilha: text("manilha").notNull(), // The manilha value for this hand
   totalBets: integer("total_bets").notNull(), // Sum of all player bets
-  isMultiplierHand: boolean("is_multiplier_hand").default(false), // If bets matched cards
-  multiplierValue: integer("multiplier_value").default(1),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -92,9 +90,11 @@ export const gameHands = pgTable("game_hands", {
 export const gameRounds = pgTable("game_rounds", {
   id: serial("id").primaryKey(),
   handId: integer("hand_id").notNull().references(() => gameHands.id),
-  roundNumber: integer("round_number").notNull(), // 1, 2, 3, etc. within the hand
-  winnerPlayerId: integer("winner_player_id"), // Who won this round
-  winningCard: text("winning_card"), // The card that won
+  roundNumber: integer("round_number").notNull(), // 1, 2, 3, etc.
+  multiplierValue: integer("multiplier_value").notNull().default(1), // Multiplier for this round
+  isMultiplierRound: boolean("is_multiplier_round").default(false), // If bets matched cards for this round
+  winnerPlayerId: text("winner_player_id"),
+  winningCard: text("winning_card"),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -117,6 +117,7 @@ export const playerBets = pgTable("player_bets", {
 // Card plays - stores every card played
 export const cardPlays = pgTable("card_plays", {
   id: serial("id").primaryKey(),
+  handId: integer("hand_id").notNull().references(() => gameHands.id),
   roundId: integer("round_id").notNull().references(() => gameRounds.id),
   playerId: integer("player_id").notNull(),
   userId: text("user_id").notNull().references(() => profiles.userId),

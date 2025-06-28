@@ -1,0 +1,1 @@
+ALTER TABLE "game_rounds" ALTER COLUMN "winner_player_id" SET DATA TYPE text;

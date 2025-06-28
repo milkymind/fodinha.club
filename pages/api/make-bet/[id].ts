@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
 import { makeBetSchema, gameIdSchema, validateRequest, MakeBetRequest } from '../../../lib/validation';
-import { recordPlayerBet, getCurrentHandId, getUserIdFromGame } from '../../../lib/gameTracking';
+import { recordPlayerBet, getCurrentHandId, getUserIdFromGame, updateHandTotalBets } from '../../../lib/gameTracking';
 
 interface GameState {
   players: number[];
@@ -212,6 +212,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('All players have bet, transitioning to playing phase');
       gameState.estado = 'jogando';
       gameState.current_player_idx = 0; // Start with first player
+      
+      // Update the hand record with total bets
+      try {
+        const handId = await getCurrentHandId(gameId as string);
+        if (handId) {
+          const totalBets = gameState.soma_palpites;
+          await updateHandTotalBets(handId, totalBets);
+        }
+      } catch (error) {
+        console.error('Failed to update hand total bets:', error);
+        // Don't fail the request, just log the error
+      }
     } else {
       console.log(`Still waiting for bets: ${Object.keys(gameState.palpites).length}/${gameState.ordem_jogada.length}`);
     }

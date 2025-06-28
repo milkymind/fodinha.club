@@ -5,9 +5,10 @@ import {
   gameHands, 
   gameParticipants,
   games,
-  profiles
+  profiles,
+  gameRounds
 } from './schema';
-import { eq, and, sql, avg, count, sum } from 'drizzle-orm';
+import { eq, and, sql, avg, count, sum, inArray } from 'drizzle-orm';
 
 // ⚠️ CRITICAL: GUEST METRICS AGGREGATION ISSUE ⚠️
 // 
@@ -92,17 +93,30 @@ async function getPlayerRawData(userId: string) {
   .from(playerBets)
   .where(eq(playerBets.userId, userId));
 
-  // Get all hands this player participated in
+  // Get all hands this player participated in with their multiplier round information
   const hands = await db.select({
     id: gameHands.id,
     gameId: gameHands.gameId,
-    isMultiplierHand: gameHands.isMultiplierHand,
-    multiplierValue: gameHands.multiplierValue,
     cardsPerPlayer: gameHands.cardsPerPlayer,
   })
   .from(gameHands)
   .innerJoin(playerBets, eq(gameHands.id, playerBets.handId))
   .where(eq(playerBets.userId, userId));
+
+  // Get multiplier rounds for these hands
+  const handIds = hands.map(hand => hand.id);
+  const multiplierRounds = handIds.length > 0 ? await db.select({
+    handId: gameRounds.handId,
+    isMultiplierRound: gameRounds.isMultiplierRound,
+  })
+  .from(gameRounds)
+  .where(and(
+    inArray(gameRounds.handId, handIds),
+    eq(gameRounds.isMultiplierRound, true)
+  )) : [];
+  
+  // Create a set of hand IDs that have multiplier rounds
+  const handsWithMultipliers = new Set(multiplierRounds.map(r => r.handId));
 
   // Get all games this player participated in
   const gameResults = await db.select({
@@ -119,6 +133,7 @@ async function getPlayerRawData(userId: string) {
   return {
     bets,
     hands,
+    handsWithMultipliers,
     gameResults,
     totalGames: gameResults.length,
     totalHands: hands.length,
@@ -165,7 +180,7 @@ function calculateSurvivalRate(data: any): number {
 function calculateMultiplierEfficiency(data: any): number {
   const multiplierBets = data.bets.filter((bet: any) => {
     const hand = data.hands.find((h: any) => h.id === bet.handId);
-    return hand && hand.isMultiplierHand;
+    return hand && data.handsWithMultipliers.has(hand.id);
   });
   
   if (multiplierBets.length === 0) return 0;
@@ -201,10 +216,11 @@ async function savePlayerMetrics(userId: string, metrics: any, rawData: any) {
   // Count supporting data
   const supportingData = {
     totalGamesPlayed: rawData.totalGames,
+    totalGamesWon: rawData.gameResults.filter((game: any) => game.isWinner).length,
     totalHandsPlayed: rawData.totalHands,
     totalRoundsPlayed: rawData.totalBets, // Each bet represents a round
     totalPerfectPredictions: rawData.bets.filter((bet: any) => bet.isPerfectPrediction).length,
-    totalMultiplierHands: rawData.hands.filter((hand: any) => hand.isMultiplierHand).length,
+    totalMultiplierHands: rawData.hands.filter((hand: any) => rawData.handsWithMultipliers.has(hand.id)).length,
     totalLastPlayerBets: rawData.bets.filter((bet: any) => bet.isLastToBet).length,
     totalHighPressureBets: rawData.bets.filter((bet: any) => bet.livesBeforeBet <= 2 && bet.livesBeforeBet > 0).length,
   };
@@ -297,7 +313,7 @@ export async function getPlayerMetrics(userId: string) {
   }
 }
 
-// Get leaderboard data for all metrics
+// Get leaderboard data for all metrics (excluding win percentage)
 export async function getLeaderboard(metric: 'perfectPredictionRate' | 'avgBetAccuracyScore' | 'avgSurvivalRate' | 'multiplierEfficiency' | 'lastPlayerWinRate' | 'highPressureAccuracy', limit: number = 10) {
   try {
     const orderBy = metric === 'avgBetAccuracyScore' 
@@ -325,6 +341,43 @@ export async function getLeaderboard(metric: 'perfectPredictionRate' | 'avgBetAc
     return leaderboard;
   } catch (error) {
     console.error(`Error getting leaderboard for ${metric}:`, error);
+    return [];
+  }
+}
+
+// Get win percentage leaderboard (uses data from profiles table)
+export async function getWinPercentageLeaderboard(limit: number = 10) {
+  try {
+    // Calculate win percentage on-the-fly from profiles data
+    const leaderboard = await db.select({
+      userId: profiles.userId,
+      username: profiles.username,
+      gamesPlayed: profiles.gamesPlayed,
+      gamesWon: profiles.gamesWon,
+      metricValue: sql<number>`
+        CASE 
+          WHEN ${profiles.gamesPlayed} = 0 THEN 0 
+          ELSE ROUND((${profiles.gamesWon}::decimal / ${profiles.gamesPlayed}::decimal) * 100, 2)
+        END
+      `,
+    })
+    .from(profiles)
+    .where(and(
+      sql`${profiles.gamesPlayed} > 0`, // Only include users who have played games
+      sql`${profiles.userId} NOT LIKE 'guest_%'`, // Exclude all guest users
+      sql`${profiles.userId} != 'anonymous'` // Exclude legacy anonymous users
+    ))
+    .orderBy(sql`
+      CASE 
+        WHEN ${profiles.gamesPlayed} = 0 THEN 0 
+        ELSE ROUND((${profiles.gamesWon}::decimal / ${profiles.gamesPlayed}::decimal) * 100, 2)
+      END DESC
+    `)
+    .limit(limit);
+    
+    return leaderboard;
+  } catch (error) {
+    console.error('Error getting win percentage leaderboard:', error);
     return [];
   }
 } 

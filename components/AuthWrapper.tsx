@@ -4,6 +4,7 @@ import CustomUserMenu from './CustomUserMenu'
 import { useGuest } from '../contexts/GuestContext'
 import Logo from './Logo'
 import PersistentHeader from './PersistentHeader'
+import ProfileInit from './ProfileInit'
 import styles from '../styles/Home.module.css'
 
 interface AuthWrapperProps {
@@ -108,6 +109,7 @@ export default function AuthWrapper({ children, gameId, playerId }: AuthWrapperP
 
       {/* Show this when user IS signed in */}
       <SignedIn>
+        <ProfileInit />
         <PersistentHeader gameId={gameId} playerId={playerId} />
         <div style={{ paddingTop: '50px' }}>
           {children}

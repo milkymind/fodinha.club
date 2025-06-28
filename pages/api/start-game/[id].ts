@@ -244,7 +244,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Mark game as started in tracking database
     try {
-      await markGameAsStarted(id);
+      const firstHandRecord = await markGameAsStarted(id, {
+        handNumber: 1,
+        cardsPerPlayer: cardsPerPlayer,
+        dealerPlayerId: dealer,
+        middleCard: cartaMeioString,
+        manilha: manilha,
+      });
+      
+      console.log('First hand created for game:', firstHandRecord);
     } catch (error) {
       console.error('Failed to mark game as started in tracking:', error);
       // Don't fail the request, just log the error
