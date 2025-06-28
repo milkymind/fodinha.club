@@ -378,74 +378,104 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const isLastRoundOfHand = gameState.current_round === gameState.cartas;
       
       if (isLastRoundOfHand) {
-        // Final round special logic: Cancel pairs in order of play, but leave the last pair for tiebreaker
+        // Final round special logic: Cancel tied cards if there are other non-tied cards that could win
         console.log('Final round - using special cancellation logic');
         
-        // Find all pairs (groups with exactly 2 cards)
-        const pairs: [number, [number, string][]][] = [];
-        const nonPairs: [number, string][] = [];
+        // Separate cards into single cards (no ties) and tied cards (multiple cards with same strength)
+        const singleCards: [number, string][] = [];
+        const tiedCardGroups: [number, [number, string][]][] = [];
         
         for (const [strength, cards] of Array.from(cardsByStrength.entries())) {
           if (cards.length === 1) {
-            nonPairs.push(cards[0]);
-          } else if (cards.length === 2) {
-            pairs.push([strength, cards]);
+            singleCards.push(cards[0]);
           } else {
-            // More than 2 cards - cancel in pairs as normal, leave remainder
-            const numPairs = Math.floor(cards.length / 2);
-            const numCancelled = numPairs * 2;
-            
-            for (let i = 0; i < numCancelled; i++) {
-              cancelledCards.push(cards[i]);
-            }
-            for (let i = numCancelled; i < cards.length; i++) {
-              remainingCards.push(cards[i]);
-            }
+            // Cards with ties (2 or more cards with same strength)
+            tiedCardGroups.push([strength, cards]);
           }
         }
         
-        // Sort pairs by the position of their SECOND card in the play order (mesa)
-        // This determines which pair was "completed last"
-        pairs.sort(([strengthA, cardsA], [strengthB, cardsB]) => {
-          // For each pair, find the position of the card that was played later
-          const positionsA = cardsA.map(([pid, card]) => 
-            gameState.mesa.findIndex(([p, c]) => p === pid && c === card)
-          );
-          const positionsB = cardsB.map(([pid, card]) => 
-            gameState.mesa.findIndex(([p, c]) => p === pid && c === card)
-          );
-          
-          // The "completion position" is the maximum position (last card played) for each pair
-          const completionPositionA = Math.max(...positionsA);
-          const completionPositionB = Math.max(...positionsB);
-          
-          return completionPositionA - completionPositionB;
-        });
+        console.log('Single cards (no ties):', singleCards);
+        console.log('Tied card groups:', tiedCardGroups.map(([strength, cards]) => ({strength, cards})));
         
-        console.log('Pairs in play order:', pairs.map(([strength, cards]) => ({strength, cards})));
-        
-        if (pairs.length === 0) {
-          // No pairs, just add all non-pairs to remaining
-          remainingCards.push(...nonPairs);
-        } else if (pairs.length === 1) {
-          // Only one pair - don't cancel it, use for tiebreaker
-          const [strength, cards] = pairs[0];
-          console.log(`Only one pair (strength ${strength}) - keeping for tiebreaker:`, cards);
-          remainingCards.push(...cards);
-          remainingCards.push(...nonPairs);
-        } else {
-          // Multiple pairs - cancel all except the last one
-          for (let i = 0; i < pairs.length - 1; i++) {
-            const [strength, cards] = pairs[i];
-            console.log(`Cancelling pair ${i + 1} (strength ${strength}):`, cards);
+        // Rule: If there are single cards available, cancel ALL tied cards
+        // Only consider tied cards for wins if there are NO single cards
+        if (singleCards.length > 0) {
+          console.log('Single cards available - cancelling ALL tied cards');
+          
+          // Add all single cards to remaining
+          remainingCards.push(...singleCards);
+          
+          // Cancel ALL tied cards
+          for (const [strength, cards] of tiedCardGroups) {
+            console.log(`Cancelling all tied cards with strength ${strength}:`, cards);
             cancelledCards.push(...cards);
           }
+        } else {
+          // No single cards - only tied cards are available
+          // Use the existing pair cancellation logic for tiebreaker
+          console.log('Only tied cards available - using pair cancellation logic');
           
-          // Keep the last pair for tiebreaker
-          const [lastStrength, lastCards] = pairs[pairs.length - 1];
-          console.log(`Keeping last pair (strength ${lastStrength}) for tiebreaker:`, lastCards);
-          remainingCards.push(...lastCards);
-          remainingCards.push(...nonPairs);
+          // Find all pairs (groups with exactly 2 cards) and larger groups
+          const pairs: [number, [number, string][]][] = [];
+          
+          for (const [strength, cards] of tiedCardGroups) {
+            if (cards.length === 2) {
+              pairs.push([strength, cards]);
+            } else {
+              // More than 2 cards - cancel in pairs as normal, leave remainder
+              const numPairs = Math.floor(cards.length / 2);
+              const numCancelled = numPairs * 2;
+              
+              for (let i = 0; i < numCancelled; i++) {
+                cancelledCards.push(cards[i]);
+              }
+              for (let i = numCancelled; i < cards.length; i++) {
+                remainingCards.push(cards[i]);
+              }
+            }
+          }
+          
+          // Sort pairs by the position of their SECOND card in the play order (mesa)
+          // This determines which pair was "completed last"
+          pairs.sort(([strengthA, cardsA], [strengthB, cardsB]) => {
+            // For each pair, find the position of the card that was played later
+            const positionsA = cardsA.map(([pid, card]) => 
+              gameState.mesa.findIndex(([p, c]) => p === pid && c === card)
+            );
+            const positionsB = cardsB.map(([pid, card]) => 
+              gameState.mesa.findIndex(([p, c]) => p === pid && c === card)
+            );
+            
+            // The "completion position" is the maximum position (last card played) for each pair
+            const completionPositionA = Math.max(...positionsA);
+            const completionPositionB = Math.max(...positionsB);
+            
+            return completionPositionA - completionPositionB;
+          });
+          
+          console.log('Pairs in play order:', pairs.map(([strength, cards]) => ({strength, cards})));
+          
+          if (pairs.length === 0) {
+            // No pairs (should not happen since we only enter this branch with tied cards)
+            console.log('No pairs found - unexpected state');
+          } else if (pairs.length === 1) {
+            // Only one pair - don't cancel it, use for tiebreaker
+            const [strength, cards] = pairs[0];
+            console.log(`Only one pair (strength ${strength}) - keeping for tiebreaker:`, cards);
+            remainingCards.push(...cards);
+          } else {
+            // Multiple pairs - cancel all except the last one
+            for (let i = 0; i < pairs.length - 1; i++) {
+              const [strength, cards] = pairs[i];
+              console.log(`Cancelling pair ${i + 1} (strength ${strength}):`, cards);
+              cancelledCards.push(...cards);
+            }
+            
+            // Keep the last pair for tiebreaker
+            const [lastStrength, lastCards] = pairs[pairs.length - 1];
+            console.log(`Keeping last pair (strength ${lastStrength}) for tiebreaker:`, lastCards);
+            remainingCards.push(...lastCards);
+          }
         }
       } else {
         // Normal cancellation logic for non-final rounds
