@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getLeaderboard, calculatePlayerMetrics } from '../../lib/metricsCalculation';
+import { getLeaderboard, getWinPercentageLeaderboard, calculatePlayerMetrics } from '../../lib/metricsCalculation';
 import { db } from '../../lib/db';
 import { playerStats, profiles } from '../../lib/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { 
-      metric = 'perfectPredictionRate', 
+      metric = 'winPercentage', 
       limit = '10',
       refresh = 'false',
       format = 'standard'
@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate parameters
     const validMetrics = [
+      'winPercentage',
       'perfectPredictionRate',
       'avgBetAccuracyScore', 
       'avgSurvivalRate',
@@ -63,22 +64,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get leaderboard data
-    const leaderboard = await getLeaderboard(
-      metric as 'perfectPredictionRate' | 'avgBetAccuracyScore' | 'avgSurvivalRate' | 'multiplierEfficiency' | 'lastPlayerWinRate' | 'highPressureAccuracy',
-      limitNum
-    );
+    let leaderboard;
+    if (metric === 'winPercentage') {
+      leaderboard = await getWinPercentageLeaderboard(limitNum);
+    } else {
+      leaderboard = await getLeaderboard(
+        metric as 'perfectPredictionRate' | 'avgBetAccuracyScore' | 'avgSurvivalRate' | 'multiplierEfficiency' | 'lastPlayerWinRate' | 'highPressureAccuracy',
+        limitNum
+      );
+    }
 
     // Get additional statistics for comprehensive view
     const totalPlayers = await db.select({ count: sql`count(*)` })
-      .from(playerStats)
-      .innerJoin(profiles, eq(playerStats.userId, profiles.userId))
+      .from(profiles)
       .where(and(
-        sql`${playerStats.userId} NOT LIKE 'guest_%'`,
-        sql`${playerStats.userId} != 'anonymous'`,
-        sql`${playerStats.totalGamesPlayed} > 0`
+        sql`${profiles.userId} NOT LIKE 'guest_%'`,
+        sql`${profiles.userId} != 'anonymous'`,
+        sql`${profiles.gamesPlayed} > 0`
       ));
 
     const metricDescriptions = {
+      winPercentage: {
+        name: 'Win Percentage',
+        description: 'Percentage of games won',
+        unit: '%',
+        betterWhen: 'higher'
+      },
       perfectPredictionRate: {
         name: 'Perfect Prediction Rate',
         description: 'Percentage of bets that exactly matched tricks won',
@@ -129,9 +140,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           rankings: leaderboard.map((entry, index) => ({
             rank: index + 1,
             username: entry.username,
-            value: parseFloat(entry.metricValue || '0'),
-            gamesPlayed: entry.totalGamesPlayed,
-            lastCalculated: entry.lastCalculatedAt,
+            value: parseFloat(typeof entry.metricValue === 'string' ? entry.metricValue || '0' : (entry.metricValue || 0).toString()),
+            gamesPlayed: 'gamesPlayed' in entry ? entry.gamesPlayed : entry.totalGamesPlayed,
+            lastCalculated: 'lastCalculatedAt' in entry ? entry.lastCalculatedAt : null,
             percentile: Math.round(((limitNum - index) / limitNum) * 100)
           }))
         }
@@ -148,8 +159,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         rank: index + 1,
         username: entry.username,
         value: entry.metricValue,
-        gamesPlayed: entry.totalGamesPlayed,
-        lastUpdated: entry.lastCalculatedAt
+        gamesPlayed: 'gamesPlayed' in entry ? entry.gamesPlayed : entry.totalGamesPlayed,
+        lastUpdated: 'lastCalculatedAt' in entry ? entry.lastCalculatedAt : null
       }))
     });
 

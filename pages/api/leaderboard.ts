@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getLeaderboard } from '../../lib/metricsCalculation';
+import { getLeaderboard, getWinPercentageLeaderboard } from '../../lib/metricsCalculation';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -11,6 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate metric parameter
     const validMetrics = [
+      'winPercentage',
       'perfectPredictionRate',
       'avgBetAccuracyScore', 
       'avgSurvivalRate',
@@ -36,13 +37,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get leaderboard data
-    const leaderboard = await getLeaderboard(
-      metric as 'perfectPredictionRate' | 'avgBetAccuracyScore' | 'avgSurvivalRate' | 'multiplierEfficiency' | 'lastPlayerWinRate' | 'highPressureAccuracy',
-      limitNum
-    );
+    let leaderboard;
+    if (metric === 'winPercentage') {
+      leaderboard = await getWinPercentageLeaderboard(limitNum);
+    } else {
+      leaderboard = await getLeaderboard(
+        metric as 'perfectPredictionRate' | 'avgBetAccuracyScore' | 'avgSurvivalRate' | 'multiplierEfficiency' | 'lastPlayerWinRate' | 'highPressureAccuracy',
+        limitNum
+      );
+    }
 
     // Format the response with metric descriptions
     const metricDescriptions = {
+      winPercentage: 'Win Percentage (%)',
       perfectPredictionRate: 'Perfect Prediction Rate (%)',
       avgBetAccuracyScore: 'Bet Accuracy Score (lower is better)',
       avgSurvivalRate: 'Survival Rate (%)',
@@ -59,8 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         rank: index + 1,
         username: entry.username,
         value: entry.metricValue,
-        gamesPlayed: entry.totalGamesPlayed,
-        lastUpdated: entry.lastCalculatedAt
+        gamesPlayed: 'gamesPlayed' in entry ? entry.gamesPlayed : entry.totalGamesPlayed,
+        lastUpdated: 'lastCalculatedAt' in entry ? entry.lastCalculatedAt : null
       }))
     });
 

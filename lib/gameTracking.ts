@@ -10,6 +10,7 @@ import {
   profiles
 } from './schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { clerkClient } from '@clerk/nextjs/server';
 
 // ⚠️ IMPORTANT: GUEST USER METRICS LIMITATION ⚠️
 // Currently all guest players share the same userId: 'anonymous'
@@ -78,14 +79,45 @@ export async function addPlayerToGame(gameId: string, userId: string, playerId: 
         .limit(1);
 
       if (!existingProfile) {
-        // Auto-create profile for authenticated user
+        // Get Clerk user info for authenticated users
+        let clerkUsername = playerName; // fallback to player name
+        try {
+          const client = await clerkClient();
+          const clerkUser = await client.users.getUser(userId);
+          clerkUsername = clerkUser.firstName || clerkUser.username || playerName || 'New Player';
+        } catch (error) {
+          console.error(`Failed to get Clerk user info for ${userId}:`, error);
+          // Continue with fallback username
+        }
+
+        // Auto-create profile for authenticated user with Clerk username
         await db.insert(profiles).values({
           userId,
-          username: playerName || 'New Player', // Use provided name or fallback
+          username: clerkUsername, // Use Clerk username instead of game username
           gamesPlayed: 0,
           gamesWon: 0,
         });
-        console.log(`Auto-created profile for authenticated user ${userId}`);
+        console.log(`Auto-created profile for authenticated user ${userId} with username: ${clerkUsername}`);
+      } else {
+        // Update existing profile with current Clerk username if it's different
+        try {
+          const client = await clerkClient();
+          const clerkUser = await client.users.getUser(userId);
+          const clerkUsername = clerkUser.firstName || clerkUser.username || existingProfile.username;
+          
+          if (clerkUsername !== existingProfile.username) {
+            await db.update(profiles)
+              .set({
+                username: clerkUsername,
+                updatedAt: new Date(),
+              })
+              .where(eq(profiles.userId, userId));
+            console.log(`Updated profile username for ${userId} to: ${clerkUsername}`);
+          }
+        } catch (error) {
+          console.error(`Failed to update username for ${userId}:`, error);
+          // Continue without updating username
+        }
       }
     }
 
@@ -105,7 +137,13 @@ export async function addPlayerToGame(gameId: string, userId: string, playerId: 
 }
 
 // 3. Mark game as started
-export async function markGameAsStarted(gameId: string) {
+export async function markGameAsStarted(gameId: string, firstHandData?: {
+  handNumber: number;
+  cardsPerPlayer: number;
+  dealerPlayerId: number;
+  middleCard?: string;
+  manilha: string;
+}) {
   try {
     await db.update(games)
       .set({
@@ -115,6 +153,17 @@ export async function markGameAsStarted(gameId: string) {
       .where(eq(games.gameId, gameId));
     
     console.log(`Game ${gameId} marked as started`);
+    
+    // Create the first hand record if provided
+    if (firstHandData) {
+      const handRecord = await createHandRecord({
+        gameId,
+        ...firstHandData,
+        totalBets: 0, // Will be updated when all bets are placed
+      });
+      console.log(`Created first hand record for game ${gameId}:`, handRecord);
+      return handRecord;
+    }
   } catch (error) {
     console.error('Error marking game as started:', error);
     throw error;
@@ -130,8 +179,6 @@ export async function createHandRecord(handData: {
   middleCard?: string;
   manilha: string;
   totalBets: number;
-  isMultiplierHand: boolean;
-  multiplierValue: number;
 }) {
   try {
     const [handRecord] = await db.insert(gameHands).values({
@@ -174,10 +221,14 @@ export async function recordPlayerBet(betData: {
 export async function createRoundRecord(roundData: {
   handId: number;
   roundNumber: number;
+  multiplierValue?: number;
+  isMultiplierRound?: boolean;
 }) {
   try {
     const [roundRecord] = await db.insert(gameRounds).values({
       ...roundData,
+      multiplierValue: roundData.multiplierValue || 1,
+      isMultiplierRound: roundData.isMultiplierRound || false,
       startedAt: new Date(),
     }).returning();
     
@@ -191,20 +242,23 @@ export async function createRoundRecord(roundData: {
 
 // 7. Record a card play
 export async function recordCardPlay(cardData: {
+  handId: number;
   roundId: number;
   playerId: number;
   userId: string;
   cardPlayed: string;
   playOrder: number;
+  isWinningCard?: boolean;
 }) {
   try {
-    const [cardRecord] = await db.insert(cardPlays).values({
+    const [cardPlayRecord] = await db.insert(cardPlays).values({
       ...cardData,
+      isWinningCard: cardData.isWinningCard || false,
       playTimestamp: new Date(),
     }).returning();
     
-    console.log('Recorded card play:', cardRecord);
-    return cardRecord;
+    console.log('Recorded card play:', cardPlayRecord);
+    return cardPlayRecord;
   } catch (error) {
     console.error('Error recording card play:', error);
     throw error;
@@ -217,7 +271,7 @@ export async function completeRound(roundId: number, winnerPlayerId: number, win
     // Update the round with winner info
     await db.update(gameRounds)
       .set({
-        winnerPlayerId,
+        winnerPlayerId: winnerPlayerId.toString(), // Convert to string to match new schema
         winningCard,
         completedAt: new Date(),
       })
@@ -234,6 +288,25 @@ export async function completeRound(roundId: number, winnerPlayerId: number, win
     console.log(`Round ${roundId} completed, winner: ${winnerPlayerId}`);
   } catch (error) {
     console.error('Error completing round:', error);
+    throw error;
+  }
+}
+
+// 8b. Complete a tied round (mark as TIED)
+export async function completeTiedRound(roundId: number) {
+  try {
+    // Update the round with TIED info
+    await db.update(gameRounds)
+      .set({
+        winnerPlayerId: 'TIED', // Show "TIED" instead of null for tied rounds
+        winningCard: 'TIED',
+        completedAt: new Date(),
+      })
+      .where(eq(gameRounds.id, roundId));
+
+    console.log(`Tied round ${roundId} completed and marked as TIED`);
+  } catch (error) {
+    console.error('Error completing tied round:', error);
     throw error;
   }
 }
@@ -309,6 +382,56 @@ export async function completeGame(gameId: string, finalResults: {
           eq(gameParticipants.gameId, gameId),
           eq(gameParticipants.playerId, result.playerId)
         ));
+    }
+
+    // Update profiles with games played and games won for authenticated users only
+    for (const result of finalResults) {
+      // Skip guest users (they start with 'guest_' or are 'anonymous')
+      if (result.userId.startsWith('guest_') || result.userId === 'anonymous') {
+        continue;
+      }
+
+      try {
+        // Increment games played for all authenticated users
+        await db.update(profiles)
+          .set({
+            gamesPlayed: sql`${profiles.gamesPlayed} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(profiles.userId, result.userId));
+
+        // Increment games won for winners only
+        if (result.isWinner) {
+          await db.update(profiles)
+            .set({
+              gamesWon: sql`${profiles.gamesWon} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(eq(profiles.userId, result.userId));
+        }
+      } catch (error) {
+        console.error(`Error updating profile for user ${result.userId}:`, error);
+        // Continue with other users even if one fails
+      }
+    }
+
+    // Calculate player statistics for all authenticated participants
+    console.log('Triggering metrics calculation for game participants...');
+    for (const result of finalResults) {
+      // Skip guest users for metrics calculation
+      if (result.userId.startsWith('guest_') || result.userId === 'anonymous') {
+        continue;
+      }
+
+      try {
+        // Import the metrics calculation function dynamically to avoid circular imports
+        const { calculatePlayerMetrics } = await import('./metricsCalculation');
+        await calculatePlayerMetrics(result.userId);
+        console.log(`Metrics calculated for user ${result.userId}`);
+      } catch (error) {
+        console.error(`Error calculating metrics for user ${result.userId}:`, error);
+        // Continue with other users even if one fails
+      }
     }
 
     console.log(`Game ${gameId} completed with results:`, finalResults);
@@ -485,5 +608,91 @@ export async function getActiveGamesForUser(userId: string) {
   } catch (error) {
     console.error('Error getting active games for user:', error);
     return [];
+  }
+}
+
+// Update hand total bets when all bets are complete
+export async function updateHandTotalBets(handId: number, totalBets: number) {
+  try {
+    await db.update(gameHands)
+      .set({ totalBets })
+      .where(eq(gameHands.id, handId));
+    
+    console.log(`Updated hand ${handId} total bets: ${totalBets}`);
+  } catch (error) {
+    console.error('Error updating hand total bets:', error);
+    throw error;
+  }
+}
+
+// Auto-create or update user profile (should be called on any user access)
+export async function ensureUserProfile(userId: string): Promise<any> {
+  try {
+    if (userId === 'anonymous' || userId.startsWith('guest_')) {
+      // Skip profile creation for anonymous/guest users
+      return null;
+    }
+
+    // Check if profile already exists
+    const [existingProfile] = await db.select()
+      .from(profiles)
+      .where(eq(profiles.userId, userId))
+      .limit(1);
+
+    if (!existingProfile) {
+      // Create new profile with Clerk username
+      try {
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        const clerkUsername = clerkUser.firstName || clerkUser.username || `User ${userId.slice(-4)}`;
+        
+        const [newProfile] = await db.insert(profiles).values({
+          userId,
+          username: clerkUsername,
+          gamesPlayed: 0,
+          gamesWon: 0,
+        }).returning();
+        
+        console.log(`Auto-created profile for user ${userId} with username: ${clerkUsername}`);
+        return newProfile;
+      } catch (error) {
+        console.error(`Failed to get Clerk user data for ${userId}:`, error);
+        // Fallback to a generic username
+        const [newProfile] = await db.insert(profiles).values({
+          userId,
+          username: `User ${userId.slice(-4)}`,
+          gamesPlayed: 0,
+          gamesWon: 0,
+        }).returning();
+        
+        console.log(`Auto-created profile for user ${userId} with fallback username`);
+        return newProfile;
+      }
+    } else {
+      // Update existing profile with current Clerk username if needed
+      try {
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        const clerkUsername = clerkUser.firstName || clerkUser.username || existingProfile.username;
+        
+        if (clerkUsername !== existingProfile.username) {
+          await db.update(profiles)
+            .set({
+              username: clerkUsername,
+              updatedAt: new Date(),
+            })
+            .where(eq(profiles.userId, userId));
+          console.log(`Updated profile username for ${userId} to: ${clerkUsername}`);
+        }
+      } catch (error) {
+        console.error(`Failed to update username for ${userId}:`, error);
+        // Continue without updating username
+      }
+      
+      return existingProfile;
+    }
+  } catch (error) {
+    console.error('Error ensuring user profile:', error);
+    return null;
   }
 } 

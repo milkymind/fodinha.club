@@ -1,0 +1,2 @@
+ALTER TABLE "card_plays" ADD COLUMN "hand_id" integer NOT NULL;--> statement-breakpoint
+ALTER TABLE "card_plays" ADD CONSTRAINT "card_plays_hand_id_game_hands_id_fk" FOREIGN KEY ("hand_id") REFERENCES "public"."game_hands"("id") ON DELETE no action ON UPDATE no action;

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getLobby, setLobby } from '../persistent-store';
 import { Server as SocketServer } from 'socket.io';
-import { createHandRecord } from '../../../lib/gameTracking';
+import { createHandRecord, getCurrentHandId } from '../../../lib/gameTracking';
 
 const SUITS = ['♣', '♥', '♠', '♦'];
 const VALUES = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3'];
@@ -292,21 +292,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   
-  // Create hand record in tracking database (only for new hands)
+  // Create hand record in tracking database for subsequent hands (not the first hand)
   if (gameState.estado === 'apostas' && gameState.current_round === 1) {
     try {
-      const isMultiplierHand = false; // We don't know yet, will update after betting
-      await createHandRecord({
-        gameId: id as string,
-        handNumber: gameState.current_hand || 1,
-        cardsPerPlayer: gameState.cartas || 1,
-        dealerPlayerId: gameState.dealer || 1,
-        middleCard: gameState.carta_meio,
-        manilha: gameState.manilha || '',
-        totalBets: 0, // Will be updated after betting phase
-        isMultiplierHand,
-        multiplierValue: gameState.multiplicador || 1,
-      });
+      // Calculate the correct hand number based on cards per player
+      // Hand 1 = 1 card, Hand 2 = 2 cards, Hand 3 = 3 cards, etc.
+      const calculatedHandNumber = gameState.cartas;
+      
+      console.log(`Checking if hand ${calculatedHandNumber} (${gameState.cartas} cards) needs to be created...`);
+      
+      // Check if this hand already exists in the database
+      const existingHandId = await getCurrentHandId(id as string);
+      
+      if (!existingHandId && calculatedHandNumber > 1) {
+        console.log(`Creating hand record for hand ${calculatedHandNumber} with ${gameState.cartas} cards per player...`);
+        await createHandRecord({
+          gameId: id as string,
+          handNumber: calculatedHandNumber,
+          cardsPerPlayer: gameState.cartas || 1,
+          dealerPlayerId: gameState.dealer || 1,
+          middleCard: gameState.carta_meio,
+          manilha: gameState.manilha || '',
+          totalBets: 0, // Will be updated after betting phase
+        });
+        console.log(`Successfully created hand record for hand ${calculatedHandNumber}`);
+      } else if (existingHandId) {
+        console.log(`Hand ${calculatedHandNumber} already exists with ID: ${existingHandId}`);
+      } else {
+        console.log(`Skipping hand creation for first hand (${calculatedHandNumber})`);
+      }
     } catch (error) {
       console.error('Failed to create hand tracking record:', error);
       // Don't fail the request, just log the error
