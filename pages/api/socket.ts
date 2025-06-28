@@ -4,7 +4,7 @@ import { getLobby, setLobby } from './persistent-store';
 
 // Simple in-memory tracking for active connections
 const activeConnections: Map<string, Set<string>> = new Map(); // gameId -> Set of socketIds
-const socketToPlayer: Map<string, { gameId: string, playerId: number }> = new Map();
+const socketToPlayer: Map<string, { gameId: string, playerId: number, userId?: string }> = new Map();
 
 // Simple rate limiting - only for abuse prevention
 const rateLimits: Map<string, number> = new Map();
@@ -63,25 +63,33 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
     console.log(`Socket connected: ${socket.id}`);
 
     // Join game room
-    socket.on('join-game', async ({ gameId, playerId, playerName }: { gameId: string, playerId: number, playerName: string }) => {
+    socket.on('join-game', async ({ gameId, playerId, playerName, userId }: { gameId: string, playerId: number, playerName: string, userId?: string }) => {
       // Simple rate limiting
       if (!checkRateLimit(socket.id, 'join-game')) {
         return;
       }
 
       try {
-        console.log(`Player ${playerId} (${playerName}) joining game ${gameId}`);
+        console.log(`Player ${playerId} (${playerName}) joining game ${gameId}, userId: ${userId || 'guest'}`);
         
         // Track this connection
         if (!activeConnections.has(gameId)) {
           activeConnections.set(gameId, new Set());
         }
         activeConnections.get(gameId)!.add(socket.id);
-        socketToPlayer.set(socket.id, { gameId, playerId });
+        socketToPlayer.set(socket.id, { gameId, playerId, userId });
 
         // Join socket room
         await socket.join(gameId);
         console.log(`Player ${playerId} joined socket room ${gameId}`);
+
+        // Mark authenticated user as connected (not guests)
+        if (userId && !userId.startsWith('guest_') && userId !== 'anonymous') {
+          import('../../lib/gameTracking').then(({ markPlayerReconnected }) => {
+            markPlayerReconnected(gameId, userId)
+              .catch((error: any) => console.error('Error marking player as connected:', error));
+          });
+        }
 
         // Get current game state and send immediately
         const lobby = await getLobby(gameId);
@@ -176,11 +184,19 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
       // Clean up tracking
       const playerInfo = socketToPlayer.get(socket.id);
       if (playerInfo) {
-        const { gameId } = playerInfo;
+        const { gameId, userId } = playerInfo;
         if (activeConnections.has(gameId)) {
           activeConnections.get(gameId)!.delete(socket.id);
         }
         socketToPlayer.delete(socket.id);
+
+        // Mark authenticated user as disconnected (but don't remove from game)
+        if (userId && !userId.startsWith('guest_') && userId !== 'anonymous') {
+          import('../../lib/gameTracking').then(({ markPlayerDisconnected }) => {
+            markPlayerDisconnected(gameId, userId)
+              .catch((error: any) => console.error('Error marking player as disconnected:', error));
+          });
+        }
       }
     });
   });

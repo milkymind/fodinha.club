@@ -1,0 +1,600 @@
+/* Leaderboard Page Styles */
+
+.leaderboardContainer {
+  min-height: 100vh;
+  padding: 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+  transition: all 0.3s ease;
+}
+
+.leaderboardContainer.dark {
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+.leaderboardContainer.light {
+  background-color: #f8f9fa;
+  color: #000000;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.dark .header {
+  background-color: #1a1a1a;
+  border-color: #333;
+}
+
+.light .header {
+  background-color: #ffffff;
+  border-color: #e0e0e0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backButton,
+.refreshButton {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.backButton {
+  background-color: #444;
+  color: #fff;
+}
+
+.backButton:hover {
+  background-color: #555;
+}
+
+.light .backButton {
+  background-color: #ddd;
+  color: #000;
+}
+
+.light .backButton:hover {
+  background-color: #ccc;
+}
+
+.refreshButton {
+  background-color: #6366f1;
+  color: #fff;
+}
+
+.refreshButton:hover {
+  background-color: #4f46e5;
+}
+
+.refreshButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refreshButton.loading {
+  opacity: 0.6;
+}
+
+.autoRefreshToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.autoRefreshToggle input[type="checkbox"] {
+  accent-color: #6366f1;
+}
+
+/* Metric Selector */
+.metricSelector {
+  margin-bottom: 30px;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+.metricCard {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  background: none;
+}
+
+.dark .metricCard {
+  background-color: #1a1a1a;
+  border-color: #333;
+  color: #fff;
+}
+
+.light .metricCard {
+  background-color: #ffffff;
+  border-color: #e0e0e0;
+  color: #000;
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.metricCard.selected {
+  border: 2px solid #6366f1;
+}
+
+.dark .metricCard.selected {
+  background-color: #1e1b4b;
+}
+
+.light .metricCard.selected {
+  background-color: #f0f9ff;
+}
+
+.metricIcon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.metricName {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.metricDescription {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Current Metric Info */
+.currentMetric {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid;
+  margin-bottom: 30px;
+}
+
+.dark .currentMetric {
+  background-color: #1a1a1a;
+  border-color: #333;
+}
+
+.light .currentMetric {
+  background-color: #ffffff;
+  border-color: #e0e0e0;
+}
+
+.metricHeader {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.metricHeader .metricIcon {
+  font-size: 2.5rem;
+}
+
+.metricHeader h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.metricHeader p {
+  margin: 5px 0 0 0;
+  opacity: 0.8;
+}
+
+.metricStats {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  text-align: center;
+}
+
+.statValue {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #6366f1;
+}
+
+.statLabel {
+  display: block;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Error and Loading States */
+.error {
+  padding: 30px;
+  border-radius: 12px;
+  border: 1px solid;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.dark .error {
+  background-color: #2d1b1b;
+  border-color: #7f1d1d;
+}
+
+.light .error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+
+.errorIcon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.error h3 {
+  margin: 0 0 10px 0;
+}
+
+.error p {
+  margin: 0 0 20px 0;
+  opacity: 0.8;
+}
+
+.retryButton {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  background-color: #dc2626;
+  color: #fff;
+  transition: all 0.2s;
+}
+
+.retryButton:hover {
+  background-color: #b91c1c;
+}
+
+.loading {
+  padding: 50px;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px solid;
+}
+
+.dark .loading {
+  background-color: #1a1a1a;
+  border-color: #333;
+}
+
+.light .loading {
+  background-color: #ffffff;
+  border-color: #e0e0e0;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top: 4px solid #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Leaderboard Table */
+.leaderboardTable {
+  border-radius: 12px;
+  border: 1px solid;
+  overflow: hidden;
+}
+
+.dark .leaderboardTable {
+  background-color: #1a1a1a;
+  border-color: #333;
+}
+
+.light .leaderboardTable {
+  background-color: #ffffff;
+  border-color: #e0e0e0;
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 100px 150px;
+  gap: 20px;
+  padding: 20px;
+  font-weight: bold;
+  border-bottom: 1px solid;
+}
+
+.dark .tableHeader {
+  background-color: #2a2a2a;
+  border-color: #333;
+}
+
+.light .tableHeader {
+  background-color: #f8f9fa;
+  border-color: #e0e0e0;
+}
+
+.tableBody {
+  /* Container for table rows */
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 100px 150px;
+  gap: 20px;
+  padding: 15px 20px;
+  border-bottom: 1px solid;
+  transition: all 0.2s;
+}
+
+.dark .tableRow {
+  border-color: #333;
+}
+
+.light .tableRow {
+  border-color: #e0e0e0;
+}
+
+.tableRow:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.tableRow.currentUser {
+  background-color: #1e3a8a;
+}
+
+.light .tableRow.currentUser {
+  background-color: #dbeafe;
+}
+
+.rankColumn,
+.playerColumn,
+.valueColumn,
+.gamesColumn,
+.percentileColumn {
+  display: flex;
+  align-items: center;
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.medal {
+  font-size: 1.2rem;
+}
+
+.playerInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.username {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.youBadge {
+  background-color: #10b981;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.value {
+  font-weight: bold;
+}
+
+.unit {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+.games {
+  /* Games played styling */
+}
+
+.percentile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.percentileBar {
+  width: 80px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dark .percentileBar {
+  background-color: #333;
+}
+
+.light .percentileBar {
+  background-color: #e0e0e0;
+}
+
+.percentileBar > div {
+  height: 100%;
+  background-color: #6366f1;
+  transition: width 0.3s;
+}
+
+/* Empty State */
+.emptyState {
+  padding: 50px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.emptyState h3 {
+  margin: 0 0 10px 0;
+}
+
+.emptyState p {
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Footer */
+.footer {
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.dark .footer {
+  background-color: #1a1a1a;
+}
+
+.light .footer {
+  background-color: #f8f9fa;
+}
+
+.footer p {
+  margin: 0 0 10px 0;
+}
+
+.footer p:last-child {
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .headerLeft,
+  .headerRight {
+    justify-content: center;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metricStats {
+    justify-content: center;
+  }
+
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 60px 1fr 80px 60px 100px;
+    gap: 10px;
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  .percentile {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .percentileBar {
+    width: 60px;
+    height: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .leaderboardContainer {
+    padding: 10px;
+  }
+
+  .header {
+    padding: 15px;
+  }
+
+  .title {
+    font-size: 1.3rem;
+  }
+
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 50px 1fr 70px;
+    gap: 8px;
+  }
+
+  /* Hide games and percentile columns on very small screens */
+  .gamesColumn,
+  .percentileColumn {
+    display: none;
+  }
+} 

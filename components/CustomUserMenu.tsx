@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/router'
 import { useUser, useClerk, SignInButton } from '@clerk/nextjs'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useGuest } from '../contexts/GuestContext'
@@ -16,6 +17,7 @@ interface CustomUserMenuProps {
 export default function CustomUserMenu({ gameId, playerId, isGuest = false, hideOnScroll = false }: CustomUserMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isBugModalOpen, setIsBugModalOpen] = useState(false)
+  const router = useRouter()
   const { user, isLoaded } = useUser()
   const { signOut, openUserProfile } = useClerk()
   const { t, toggleLanguage, language } = useLanguage()
@@ -64,8 +66,8 @@ export default function CustomUserMenu({ gameId, playerId, isGuest = false, hide
   }
 
   const handleLeaderboard = () => {
-    // Open leaderboard - you can customize this
-    console.log('Open leaderboard')
+    // Navigate to leaderboard page using Next.js router
+    router.push('/leaderboard');
     setIsOpen(false)
   }
 
