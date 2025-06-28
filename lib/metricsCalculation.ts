@@ -304,7 +304,7 @@ export async function getLeaderboard(metric: 'perfectPredictionRate' | 'avgBetAc
       ? sql`${playerStats[metric]} ASC` // Lower is better for accuracy score
       : sql`${playerStats[metric]} DESC`; // Higher is better for others
     
-    // ⚠️ WARNING: This leaderboard may include 'anonymous' representing ALL guests
+    // Only include authenticated users (exclude all guest users from leaderboard)
     const leaderboard = await db.select({
       userId: playerStats.userId,
       username: profiles.username,
@@ -314,7 +314,11 @@ export async function getLeaderboard(metric: 'perfectPredictionRate' | 'avgBetAc
     })
     .from(playerStats)
     .innerJoin(profiles, eq(playerStats.userId, profiles.userId))
-    .where(sql`${playerStats[metric]} IS NOT NULL`)
+    .where(and(
+      sql`${playerStats[metric]} IS NOT NULL`,
+      sql`${playerStats.userId} NOT LIKE 'guest_%'`, // Exclude all guest users
+      sql`${playerStats.userId} != 'anonymous'` // Exclude legacy anonymous users
+    ))
     .orderBy(orderBy)
     .limit(limit);
     

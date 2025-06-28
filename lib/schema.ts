@@ -65,8 +65,11 @@ export const gameParticipants = pgTable("game_participants", {
   finalPosition: integer("final_position"), // 1st, 2nd, 3rd place etc. (null if game not finished)
   livesRemaining: integer("lives_remaining"), // Lives left when eliminated (or at game end)
   isWinner: boolean("is_winner").default(false),
+  isConnected: boolean("is_connected").default(true), // Track connection status
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
   eliminatedAt: timestamp("eliminated_at"),
+  disconnectedAt: timestamp("disconnected_at"), // When player disconnected
+  reconnectedAt: timestamp("reconnected_at"), // When player reconnected
 });
 
 // Hands table - stores each hand within a game

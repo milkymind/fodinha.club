@@ -1,0 +1,63 @@
+.bugReportButton {
+  position: fixed;
+  top: 1rem;
+  right: 8rem; /* Position to the left of the language toggle */
+  background: white;
+  border: 2px solid #dc2626; /* Red color for bug reports */
+  border-radius: 25px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  color: #dc2626;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  font-size: 0.9rem;
+}
+
+.bugReportButton:hover {
+  background: #dc2626;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.bugIcon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.buttonText {
+  font-size: 0.85rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .bugReportButton {
+    top: 0.5rem;
+    right: 6rem; /* Adjust for mobile */
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .bugIcon {
+    font-size: 1rem;
+  }
+  
+  .buttonText {
+    font-size: 0.75rem;
+  }
+}
+
+/* For very small screens, stack vertically */
+@media (max-width: 480px) {
+  .bugReportButton {
+    top: 3.5rem; /* Stack below language toggle */
+    right: 0.5rem;
+  }
+} 

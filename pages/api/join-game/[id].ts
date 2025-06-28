@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       // Determine authenticated or guest user
       const { userId: clerkUserId } = getAuth(req);
-      const joiningUserId = clerkUserId || 'anonymous';
+      const joiningUserId = clerkUserId || `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
       await addPlayerToGame(id as string, joiningUserId, playerId, player_name);
     } catch (error) {

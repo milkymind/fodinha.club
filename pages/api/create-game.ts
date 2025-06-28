@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Determine if this is an authenticated user (Clerk) or a guest
     const { userId: clerkUserId } = getAuth(req);
-    const hostUserId = clerkUserId || 'anonymous';
+    const hostUserId = clerkUserId || `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     // Generate a unique game ID
     const gameId = Math.random().toString(36).substring(2, 6).toUpperCase();

@@ -52,22 +52,41 @@ export async function createGameRecord(gameData: {
 // 2. Add a player to a game
 export async function addPlayerToGame(gameId: string, userId: string, playerId: number, playerName: string) {
   try {
-    // Ensure the user profile exists (create a stub profile if it doesn't)
-    const [existingProfile] = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.userId, userId))
-      .limit(1);
+    // Handle authenticated vs guest users differently
+    if (userId.startsWith('guest_') || userId === 'anonymous') {
+      // For guest users, create a temporary profile that won't appear in leaderboards
+      const [existingProfile] = await db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, userId))
+        .limit(1);
 
-    if (!existingProfile) {
-      // For guest users we may only have a temporary userId like "anonymous" or "guest_xxx"
-      // Create a minimal profile so that foreign-key inserts succeed.
-      await db.insert(profiles).values({
-        userId,
-        username: playerName || userId, // Fallback to userId if no name provided
-        gamesPlayed: 0,
-        gamesWon: 0,
-      });
+      if (!existingProfile) {
+        await db.insert(profiles).values({
+          userId,
+          username: playerName || `Guest Player`, // Use player name or fallback
+          gamesPlayed: 0,
+          gamesWon: 0,
+        });
+      }
+    } else {
+      // For authenticated users, ensure profile exists and auto-create if needed
+      const [existingProfile] = await db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, userId))
+        .limit(1);
+
+      if (!existingProfile) {
+        // Auto-create profile for authenticated user
+        await db.insert(profiles).values({
+          userId,
+          username: playerName || 'New Player', // Use provided name or fallback
+          gamesPlayed: 0,
+          gamesWon: 0,
+        });
+        console.log(`Auto-created profile for authenticated user ${userId}`);
+      }
     }
 
     const [participant] = await db.insert(gameParticipants).values({
@@ -352,5 +371,119 @@ export async function getUserIdFromGame(gameId: string, playerId: number): Promi
   } catch (error) {
     console.error('Error getting user ID from game:', error);
     return null;
+  }
+}
+
+// 14. Check if user can reconnect to a game
+export async function canUserReconnect(userId: string, gameId: string): Promise<{
+  canReconnect: boolean;
+  participant?: any;
+  gameStatus?: string;
+}> {
+  try {
+    // Get game info
+    const [game] = await db.select()
+      .from(games)
+      .where(eq(games.gameId, gameId))
+      .limit(1);
+
+    if (!game || game.gameStatus === 'completed') {
+      return { canReconnect: false };
+    }
+
+    // Check if user was a participant
+    const [participant] = await db.select()
+      .from(gameParticipants)
+      .where(and(
+        eq(gameParticipants.gameId, gameId),
+        eq(gameParticipants.userId, userId)
+      ))
+      .limit(1);
+
+    if (!participant) {
+      return { canReconnect: false };
+    }
+
+    // User can reconnect if:
+    // 1. Game is still active
+    // 2. User was a participant
+    // 3. User wasn't eliminated (has lives remaining or game just started)
+    const canReconnect = game.gameStatus === 'active' && 
+                        (participant.livesRemaining === null || participant.livesRemaining > 0);
+
+    return {
+      canReconnect,
+      participant,
+      gameStatus: game.gameStatus
+    };
+  } catch (error) {
+    console.error('Error checking reconnection eligibility:', error);
+    return { canReconnect: false };
+  }
+}
+
+// 15. Mark player as disconnected (but don't remove from game)
+export async function markPlayerDisconnected(gameId: string, userId: string) {
+  try {
+    await db.update(gameParticipants)
+      .set({
+        disconnectedAt: new Date(),
+        isConnected: false
+      })
+      .where(and(
+        eq(gameParticipants.gameId, gameId),
+        eq(gameParticipants.userId, userId)
+      ));
+    
+    console.log(`Marked player ${userId} as disconnected from game ${gameId}`);
+  } catch (error) {
+    console.error('Error marking player as disconnected:', error);
+  }
+}
+
+// 16. Mark player as reconnected
+export async function markPlayerReconnected(gameId: string, userId: string) {
+  try {
+    await db.update(gameParticipants)
+      .set({
+        reconnectedAt: new Date(),
+        isConnected: true
+      })
+      .where(and(
+        eq(gameParticipants.gameId, gameId),
+        eq(gameParticipants.userId, userId)
+      ));
+    
+    console.log(`Marked player ${userId} as reconnected to game ${gameId}`);
+  } catch (error) {
+    console.error('Error marking player as reconnected:', error);
+  }
+}
+
+// 17. Get active games for a user (for reconnection UI)
+export async function getActiveGamesForUser(userId: string) {
+  try {
+    const activeGames = await db.select({
+      gameId: games.gameId,
+      gameStatus: games.gameStatus,
+      startedAt: games.startedAt,
+      playerId: gameParticipants.playerId,
+      playerName: gameParticipants.playerName,
+      livesRemaining: gameParticipants.livesRemaining,
+      isConnected: gameParticipants.isConnected
+    })
+    .from(gameParticipants)
+    .innerJoin(games, eq(gameParticipants.gameId, games.gameId))
+    .where(and(
+      eq(gameParticipants.userId, userId),
+      eq(games.gameStatus, 'active'),
+      // Only include if player has lives or game just started
+      sql`(${gameParticipants.livesRemaining} IS NULL OR ${gameParticipants.livesRemaining} > 0)`
+    ));
+
+    return activeGames;
+  } catch (error) {
+    console.error('Error getting active games for user:', error);
+    return [];
   }
 } 

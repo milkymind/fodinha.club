@@ -3,6 +3,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 // Define which routes should be public (accessible without authentication)
 const isPublicRoute = createRouteMatcher([
   '/',                // Home page - let component handle auth UI
+  '/leaderboard',     // Leaderboard page - allow guests to view
   '/sign-in(.*)',     // Clerk sign in pages
   '/sign-up(.*)',     // Clerk sign up pages
   '/api/socket(.*)',  // Socket.IO endpoints - needed for real-time game features
@@ -17,6 +18,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/make-bet(.*)',    // Making bets - allow guests
   '/api/play-card(.*)',   // Playing cards - allow guests
   '/api/lobby-info(.*)',  // Lobby information - allow guests
+  '/api/lobby-management', // Enhanced lobby management - allow guests
+  '/api/leaderboard(.*)', // Leaderboard access - allow guests to view
   '/api/report-bug',      // Bug reports - allow guests
 ])
 
