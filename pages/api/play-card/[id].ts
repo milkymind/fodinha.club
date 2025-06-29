@@ -786,21 +786,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Check for eliminated players
           gameState.eliminados = gameState.players.filter(pid => gameState.vidas[pid] <= 0);
           
-          // Check if game should end based on number of players and eliminations
-          const totalPlayers = gameState.players.length;
+          // Game ends when 1 player is eliminated (regardless of total players)
           const eliminatedCount = gameState.eliminados.length;
-          let gameEnds = false;
-          
-          if (totalPlayers <= 4) {
-            // 4 or fewer players: game ends when 1 player is eliminated
-            gameEnds = eliminatedCount >= 1;
-          } else if (totalPlayers >= 5 && totalPlayers <= 8) {
-            // 5-8 players: game ends when 2 players are eliminated
-            gameEnds = eliminatedCount >= 2;
-          } else if (totalPlayers >= 9 && totalPlayers <= 10) {
-            // 9-10 players: game ends when 3 players are eliminated
-            gameEnds = eliminatedCount >= 3;
-          }
+          const gameEnds = eliminatedCount >= 1;
           
           if (gameEnds) {
             // Game is over
