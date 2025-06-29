@@ -189,6 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const livesBeforeBet = gameState.vidas[player_id] || 0;
         
         await recordPlayerBet({
+          gameId: gameId as string,
           handId,
           playerId: player_id,
           userId,

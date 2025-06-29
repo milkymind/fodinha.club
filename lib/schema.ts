@@ -89,6 +89,7 @@ export const gameHands = pgTable("game_hands", {
 // Rounds table - stores each round within a hand
 export const gameRounds = pgTable("game_rounds", {
   id: serial("id").primaryKey(),
+  gameId: text("game_id").notNull().references(() => games.gameId),
   handId: integer("hand_id").notNull().references(() => gameHands.id),
   roundNumber: integer("round_number").notNull(), // 1, 2, 3, etc.
   multiplierValue: integer("multiplier_value").notNull().default(1), // Multiplier for this round
@@ -102,6 +103,7 @@ export const gameRounds = pgTable("game_rounds", {
 // Player bets - stores each player's bet for each hand
 export const playerBets = pgTable("player_bets", {
   id: serial("id").primaryKey(),
+  gameId: text("game_id").notNull().references(() => games.gameId),
   handId: integer("hand_id").notNull().references(() => gameHands.id),
   playerId: integer("player_id").notNull(),
   userId: text("user_id").notNull().references(() => profiles.userId),
@@ -117,6 +119,7 @@ export const playerBets = pgTable("player_bets", {
 // Card plays - stores every card played
 export const cardPlays = pgTable("card_plays", {
   id: serial("id").primaryKey(),
+  gameId: text("game_id").notNull().references(() => games.gameId),
   handId: integer("hand_id").notNull().references(() => gameHands.id),
   roundId: integer("round_id").notNull().references(() => gameRounds.id),
   playerId: integer("player_id").notNull(),

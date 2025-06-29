@@ -286,6 +286,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (gameState.mesa.length === 1 && handId) {
             const isMultiplierRound = gameState.soma_palpites === gameState.cartas;
             const roundRecord = await createRoundRecord({
+              gameId: gameId as string,
               handId: handId,
               roundNumber: gameState.current_round || 1,
               multiplierValue: gameState.multiplicador || 1,
@@ -299,6 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const playerUserId = await getUserIdFromGame(gameId as string, player_id);
             if (playerUserId) {
               await recordCardPlay({
+                gameId: gameId as string,
                 handId,
                 roundId,
                 playerId: player_id,
@@ -339,6 +341,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (gameState.mesa.length === 1) {
         const isMultiplierRound = gameState.soma_palpites === gameState.cartas;
         const roundRecord = await createRoundRecord({
+          gameId: gameId as string,
           handId: handId!,
           roundNumber: gameState.current_round || 1,
           multiplierValue: gameState.multiplicador || 1,
@@ -352,6 +355,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const playerUserId = await getUserIdFromGame(gameId as string, player_id);
         if (playerUserId) {
           await recordCardPlay({
+            gameId: gameId as string,
             handId,
             roundId,
             playerId: player_id,

@@ -184,7 +184,7 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
       // Clean up tracking
       const playerInfo = socketToPlayer.get(socket.id);
       if (playerInfo) {
-        const { gameId, userId } = playerInfo;
+        const { gameId, playerId, userId } = playerInfo;
         if (activeConnections.has(gameId)) {
           activeConnections.get(gameId)!.delete(socket.id);
         }
@@ -197,6 +197,18 @@ const SocketHandler = (req: NextApiRequest, res: NextApiResponse) => {
               .catch((error: any) => console.error('Error marking player as disconnected:', error));
           });
         }
+
+        // Notify other players in the lobby about disconnection
+        // This helps trigger UI updates so the disconnected player's name can be hidden/dimmed
+        socket.to(gameId).emit('player-disconnected', {
+          gameId,
+          playerId,
+          userId,
+          reason: 'socket_disconnect',
+          timestamp: Date.now()
+        });
+        
+        console.log(`Notified players in game ${gameId} about player ${playerId} disconnection`);
       }
     });
   });

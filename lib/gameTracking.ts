@@ -196,6 +196,7 @@ export async function createHandRecord(handData: {
 
 // 5. Record a player's bet
 export async function recordPlayerBet(betData: {
+  gameId: string;
   handId: number;
   playerId: number;
   userId: string;
@@ -219,6 +220,7 @@ export async function recordPlayerBet(betData: {
 
 // 6. Start a new round
 export async function createRoundRecord(roundData: {
+  gameId: string;
   handId: number;
   roundNumber: number;
   multiplierValue?: number;
@@ -242,6 +244,7 @@ export async function createRoundRecord(roundData: {
 
 // 7. Record a card play
 export async function recordCardPlay(cardData: {
+  gameId: string;
   handId: number;
   roundId: number;
   playerId: number;

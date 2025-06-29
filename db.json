@@ -445,6 +445,25 @@
       "lastUpdated": "2025-06-28T22:55:30.024Z",
       "cachedAt": 1751151327742,
       "lastPlayerCleanup": "2025-06-28T22:55:30.024Z"
+    },
+    "XTZI": {
+      "gameId": "XTZI",
+      "players": [
+        {
+          "id": 1,
+          "name": "milky"
+        },
+        {
+          "id": 2,
+          "name": "guest"
+        }
+      ],
+      "maxPlayers": 10,
+      "lives": 3,
+      "startFrom": "one",
+      "gameStarted": false,
+      "gameState": null,
+      "lastUpdated": "2025-06-29T17:35:59.942Z"
     }
   }
 }
