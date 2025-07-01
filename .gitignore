@@ -68,4 +68,21 @@ pids
 .env.production.local
 .env*.local
 
+# SECURITY: Prevent any backup or temporary files with secrets
+*.backup
+*.bak
+*.tmp
+*secrets*
+*config*.json
+*credentials*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Database files that might contain sensitive data
+*.db
+*.sqlite
+*.sqlite3
+
 
